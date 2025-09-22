@@ -1,73 +1,80 @@
-# Welcome to your Lovable project
+Serenity – Mental Wellness Tracking & Improvement System
+🌱 Overview
 
-## Project info
+Serenity is a modern web application designed to help users track, manage, and improve their mental health.
+It provides tools for mood tracking, stress management, sleep monitoring, and gratitude journaling – empowering individuals to build healthier habits and gain insights into their mental wellness journey.
 
-**URL**: https://lovable.dev/projects/2d792cef-595f-43d4-905b-31ea298d7d85
+This project was developed as part of Software Engineering Practice coursework.
 
-## How can I edit this code?
+🚀 Features
 
-There are several ways of editing your application.
+🌤️ Mood Tracker – log and visualize mood patterns.
 
-**Use Lovable**
+⚖️ Stress Slider – monitor stress levels daily.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2d792cef-595f-43d4-905b-31ea298d7d85) and start prompting.
+💤 Sleep Tracker – record sleep quality and duration.
 
-Changes made via Lovable will be committed automatically to this repo.
+🙏 Gratitude Journal – practice positive reflections.
 
-**Use your preferred IDE**
+📊 Analytics Dashboard – gain insights into wellness progress.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+🎨 Modern UI – built with TailwindCSS + shadcn/ui components.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+⚡ Fast Development – powered by Vite + React + TypeScript.
 
-Follow these steps:
+🛠️ Tech Stack
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Frontend: React, TypeScript, Vite
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Styling: Tailwind CSS, shadcn/ui
 
-# Step 3: Install the necessary dependencies.
-npm i
+Server: Node.js (server.js)
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Linting/Formatting: ESLint
+
+Package Manager: npm
+
+📂 Project Structure
+'''bash
+├── index.html
+├── server.js
+├── package.json
+├── vite.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── /src
+│   ├── components/   # UI components
+│   ├── pages/        # Application pages
+│   ├── assets/       # Images, icons
+│   └── utils/        # Helper functions
+'''
+
+⚡ Installation & Setup
+1. Clone the Repository
+'''bash
+git clone https://github.com/your-username/serenity.git
+cd serenity
+
+3. Install Dependencies
+'''bash
+npm install
+'''
+
+5. Run Development Server
+'''bash
 npm run dev
-```
+'''
 
-**Edit a file directly in GitHub**
+7. Build for Production
+'''bash
+npm run build
+'''
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+9. Run Server (optional)
+'''bash
+node server.js
+'''
 
-**Use GitHub Codespaces**
+📜 License
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/2d792cef-595f-43d4-905b-31ea298d7d85) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License – feel free to use, modify, and distribute.by-step-guide)
