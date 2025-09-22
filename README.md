@@ -30,7 +30,7 @@ This project was developed as part of **Software Engineering Practice** coursewo
 
 ## 📂 Project Structure
 
-'''bash
+```bash
 
 ├── index.html
 ├── server.js
@@ -43,7 +43,7 @@ This project was developed as part of **Software Engineering Practice** coursewo
 │   ├── pages/        # Application pages
 │   ├── assets/       # Images, icons
 │   └── utils/        # Helper functions
-
+```
 
 ## ⚡ Installation & Setup
 
