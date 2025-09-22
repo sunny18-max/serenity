@@ -47,31 +47,39 @@ This project was developed as part of **Software Engineering Practice** coursewo
 
 ## ⚡ Installation & Setup
 
-1. Clone the Repository
-'''bash
+Follow these steps to set up and run the project locally:
+
+### 1. Clone the Repository
+
+```bash
 git clone https://github.com/your-username/serenity.git
 cd serenity
+```
 
-3. Install Dependencies
-'''bash
+### 3. Install Dependencies
+
+```bash
 npm install
+```
 
+### 5. Run Development Server
 
-5. Run Development Server
-'''bash
+```bash
 npm run dev
+```
 
+### 7. Build for Production
 
-7. Build for Production
-'''bash
+```bash
 npm run build
+```
 
+### 9. Run Server (optional)
 
-9. Run Server (optional)
-'''bash
+```bash
 node server.js
+```
 
-
-📜 License
+## 📜 License
 
 This project is licensed under the MIT License – feel free to use, modify, and distribute.by-step-guide)
