@@ -43,7 +43,7 @@ const AuthPage = () => {
     setIsLoading(true);
     try {
       // Check if user exists in Firebase Auth
-      const checkRes = await axios.post("http://localhost:3001/api/auth/check-user", { email: formData.email });
+      const checkRes = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/check-user`, { email: formData.email });
       if (!checkRes.data.exists) {
         toast({
           title: "Account not found",
@@ -109,7 +109,7 @@ const AuthPage = () => {
         return;
       }
       // Check if user exists
-      const checkRes = await axios.post("http://localhost:3001/api/auth/check-user", { email: formData.email });
+      const checkRes = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/check-user`, { email: formData.email });
       if (checkRes.data.exists) {
         toast({
           title: "User already exists",
