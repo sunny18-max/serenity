@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin, Github, Linkedin, Code, Sparkles, Users } from "lucide-react";
+import { Mail, Phone, MapPin, Github, Linkedin, Code, Sparkles, ArrowLeft, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Contact = () => {
@@ -15,7 +15,8 @@ const Contact = () => {
       tech: ["React", "TypeScript", "Tailwind CSS", "UI/UX Design"],
       github: "https://github.com/sunny18-max",
       linkedin: "https://www.linkedin.com/in/saathvik-kalepu-17041228b/",
-      description: "Leading the frontend development with modern React architecture and user experience design."
+      description: "Leading the frontend development with modern React architecture and user experience design.",
+      image: "/images/team/saathvik.jpg"
     },
     {
       name: "M. Thanuj Kumar", 
@@ -26,7 +27,8 @@ const Contact = () => {
       tech: ["Node.js", "Express", "MongoDB", "API Development"],
       github: "#",
       linkedin: "https://www.linkedin.com/in/manchuri-thanuj-kumar-reddy-aa5907378/",
-      description: "Building robust backend systems, database architecture, and API development."
+      description: "Building robust backend systems, database architecture, and API development.",
+      image: "/images/team/thanuj.jpg"
     },
     {
       name: "M. Harsha Vardhan Reddy",
@@ -35,9 +37,10 @@ const Contact = () => {
       email: "123cs0044@iiitk.ac.in",
       phone: "+91-XXXXX-XXXXX",
       tech: ["React", "Node.js", "Database", "DevOps"],
-      github: "#",
+      github: "https://github.com/Harsha-76",
       linkedin: "https://www.linkedin.com/in/harsha-vardhan-b6a49a36b/",
-      description: "Bridging frontend and backend with seamless integration and system architecture."
+      description: "Bridging frontend and backend with seamless integration and system architecture.",
+      image: "/images/team/harsha.jpg"
     },
     {
       name: "Umesh Rathod",
@@ -46,9 +49,10 @@ const Contact = () => {
       email: "123cs0055@iiitk.ac.in",
       phone: "+91-XXXXX-XXXXX",
       tech: ["Figma", "React", "Animation", "Integration"],
-      github: "#",
+      github: "https://github.com/umeshrathlavath",
       linkedin: "https://www.linkedin.com/in/rathlavath-umesh-973978372/",
-      description: "Crafting beautiful user experiences, animations, and handling system integration."
+      description: "Crafting beautiful user experiences, animations, and handling system integration.",
+      image: "/images/team/umesh.jpg"
     }
   ];
 
@@ -63,7 +67,13 @@ const Contact = () => {
               </div>
               <h1 className="text-xl font-cursive font-bold text-gradient-primary">Serenity</h1>
             </div>
-            <Link to="/" className="text-muted-foreground hover:text-primary">Back to Home</Link>
+            <Link 
+          to="/" 
+          className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors mb-2"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Home
+        </Link>
           </div>
         </div>
       </header>
@@ -91,8 +101,26 @@ const Contact = () => {
               <Card key={index} className="team-card group">
                 <CardHeader>
                   <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center text-white text-xl font-bold shadow-glow flex-shrink-0">
-                      {dev.name.split(' ').map(n => n[0]).join('')}
+                    <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center overflow-hidden shadow-glow flex-shrink-0">
+                      {dev.image ? (
+                        <img 
+                          src={dev.image} 
+                          alt={dev.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to initials if image fails to load
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            const nextSibling = target.nextSibling as HTMLElement;
+                            if (nextSibling) {
+                              nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-full h-full flex items-center justify-center text-white text-xl font-bold ${dev.image ? 'hidden' : 'flex'}`}>
+                        {dev.name.split(' ').map(n => n[0]).join('')}
+                      </div>
                     </div>
                     <div className="flex-1">
                       <CardTitle className="text-xl font-bold">{dev.name}</CardTitle>
@@ -155,8 +183,10 @@ const Contact = () => {
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Faculty Supervisor</h2>
               <div className="flex items-center justify-center gap-6">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
-                  VS
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-bold">
+                    VS
+                  </div>
                 </div>
                 <div className="text-left">
                   <h3 className="text-xl font-bold">Dr. V. Siva Rama Krishnaiah</h3>

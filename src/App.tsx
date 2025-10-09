@@ -14,7 +14,9 @@ import AuthPage from "./pages/AuthPage";
 import AssessmentCenter from "./pages/AssessmentCenter";
 import SettingsPage from "./pages/Settings";
 import ProgressPage from "./pages/Progress";
-
+import Resources from "./components/Resources";
+import Community from "./components/Community";
+import Achievements from "./components/Achievements";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -33,6 +35,9 @@ const App = () => (
           <Route path="/assessment-center" element={<AssessmentCenter />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/resources" element={<Resources />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/achievements" element={<Achievements />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

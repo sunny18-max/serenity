@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Heart, Shield, Users, Target, Star, TrendingUp, CheckCircle, Sparkles } from "lucide-react";
+import { Brain, Heart, Shield, Users, Target, Star, TrendingUp, CheckCircle,ArrowLeft, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const About = () => {
@@ -49,7 +49,13 @@ const About = () => {
               </div>
               <h1 className="text-xl font-cursive font-bold text-gradient-primary">Serenity</h1>
             </div>
-            <Link to="/" className="text-muted-foreground hover:text-primary">Back to Home</Link>
+           <Link 
+          to="/" 
+          className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors mb-2"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Home
+        </Link>
           </div>
         </div>
       </header>
@@ -170,7 +176,7 @@ const About = () => {
                 <Button size="lg" variant="secondary" asChild>
                   <Link to="/auth">Get Started Today</Link>
                 </Button>
-                <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" asChild>
+                <Button size="lg" variant="outline" className="border-white/60 text-white bg-black/40 hover:bg-white/15 neon-border" asChild>
                   <Link to="/contact">Contact Our Team</Link>
                 </Button>
               </div>

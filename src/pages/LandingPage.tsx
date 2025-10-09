@@ -314,28 +314,32 @@ const LandingPage = () => {
                 role: "Frontend Developer & Team Leader",
                 rollNo: "123cs0013",
                 tech: ["React", "TypeScript", "Tailwind CSS", "UI/UX Design"],
-                description: "Leading the frontend development with modern React architecture"
+                description: "Leading the frontend development with modern React architecture",
+                image: "/images/team/saathvik.jpg"
               },
               {
                 name: "M. Thanuj Kumar", 
                 role: "Backend Developer",
                 rollNo: "123cs0040",
                 tech: ["Node.js", "Express", "MongoDB", "API Development"],
-                description: "Building robust backend systems and database architecture"
+                description: "Building robust backend systems and database architecture",
+                image: "/images/team/thanuj.jpg"
               },
               {
                 name: "M. Harsha Vardhan Reddy",
                 role: "Full Stack Developer", 
                 rollNo: "123cs0044",
                 tech: ["React", "Node.js", "Database", "DevOps"],
-                description: "Bridging frontend and backend with seamless integration"
+                description: "Bridging frontend and backend with seamless integration",
+                image: "/images/team/harsha.jpg"
               },
               {
                 name: "Umesh Rathod",
                 role: "UI/UX & Integration",
                 rollNo: "123cs0055", 
                 tech: ["Figma", "React", "Animation", "Integration"],
-                description: "Crafting beautiful user experiences and system integration"
+                description: "Crafting beautiful user experiences and system integration",
+                image: "/images/team/umesh.jpg"
               }
             ].map((member, index) => (
               <Card 
@@ -345,8 +349,26 @@ const LandingPage = () => {
                 data-aos-delay={index * 100}
               >
                 <CardHeader className="text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-hero rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-glow">
-                    {member.name.split(' ').map(n => n[0]).join('')}
+                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-hero rounded-full flex items-center justify-center overflow-hidden shadow-glow">
+                    {member.image ? (
+                      <img 
+                        src={member.image} 
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to initials if image fails to load
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const nextSibling = target.nextSibling as HTMLElement;
+                          if (nextSibling) {
+                            nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-full h-full flex items-center justify-center text-white text-3xl font-bold ${member.image ? 'hidden' : 'flex'}`}>
+                      {member.name.split(' ').map(n => n[0]).join('')}
+                    </div>
                   </div>
                   <CardTitle className="text-lg font-bold">{member.name}</CardTitle>
                   <p className="text-primary font-medium">{member.role}</p>
@@ -422,7 +444,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-white/40 text-white hover:bg-white/10 neon-border"
+                className="border-white/60 text-white bg-black/40 hover:bg-white/15 neon-border"
                 data-aos="zoom-in"
                 data-aos-delay="300"
               >
