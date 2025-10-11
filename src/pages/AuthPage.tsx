@@ -8,9 +8,7 @@ import { Sparkles, Mail, Lock, User, ArrowLeft, Phone, Eye, EyeOff, Loader2 } fr
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import axios from "axios";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +17,6 @@ const AuthPage = () => {
   const [activeTab, setActiveTab] = useState("signin");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -28,7 +25,6 @@ const AuthPage = () => {
     confirmPassword: "",
     verificationCode: ""
   });
-  const [phoneStep, setPhoneStep] = useState<"input" | "verify">("input");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,45 +33,106 @@ const AuthPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Check if user exists - with better fallback handling
+  const checkUserExists = async (email: string): Promise<{ exists: boolean; uid?: string }> => {
+    try {
+      const API_URL = "http://localhost:3001";
+      const checkRes = await fetch(`${API_URL}/api/auth/check-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (checkRes.ok) {
+        return await checkRes.json();
+      } else {
+        throw new Error(`API returned ${checkRes.status}`);
+      }
+    } catch (error) {
+      console.warn("API check failed, using Firebase fallback:", error);
+      // Return a special flag to indicate API failure
+      throw new Error("API_UNAVAILABLE");
+    }
+  };
+
   // Sign In
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Check if user exists in Firebase Auth
-      const checkRes = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/check-user`, { email: formData.email });
-      if (!checkRes.data.exists) {
-        toast({
-          title: "Account not found",
-          description: "Please sign up first to create an account.",
-          variant: "destructive"
-        });
-        setActiveTab("signup");
-        setIsLoading(false);
-        return;
+      let apiCheckFailed = false;
+      
+      // Try API check first
+      try {
+        const checkResult = await checkUserExists(formData.email);
+        
+        // If API worked and user doesn't exist
+        if (!checkResult.exists) {
+          toast({
+            title: "Account not found",
+            description: "Please sign up first to create an account.",
+            variant: "destructive"
+          });
+          setActiveTab("signup");
+          setIsLoading(false);
+          return;
+        }
+      } catch (error: any) {
+        if (error.message === "API_UNAVAILABLE") {
+          apiCheckFailed = true;
+          console.log("API unavailable, proceeding with Firebase authentication");
+        } else {
+          throw error;
+        }
       }
-      // Firebase sign in
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
+
+      // Firebase sign in (this will work regardless of API status)
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+      
       // Get user profile from Firestore
-      const userDoc = await getDoc(doc(db, "users", checkRes.data.uid));
-      if (!userDoc.exists()) {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          toast({
+            title: `Welcome back, ${userDoc.data().name || "User"}!`,
+            description: "You've been signed in successfully."
+          });
+        } else {
+          toast({
+            title: `Welcome back!`,
+            description: "You've been signed in successfully."
+          });
+        }
+      } catch (firestoreError) {
+        console.warn("Firestore error:", firestoreError);
         toast({
-          title: "Error",
-          description: "User profile not found.",
-          variant: "destructive"
+          title: `Welcome back!`,
+          description: "You've been signed in successfully."
         });
-        setIsLoading(false);
-        return;
       }
-      toast({
-        title: `Welcome back, ${userDoc.data().name || "User"}!`,
-        description: "You've been signed in successfully."
-      });
+      
       navigate("/dashboard");
     } catch (error: any) {
+      console.error("Sign in error:", error);
+      let errorMessage = "Invalid credentials. Please try again.";
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email. Please sign up first.";
+        setActiveTab("signup");
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password. Please try again.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address. Please check your email.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Invalid credentials. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -108,18 +165,28 @@ const AuthPage = () => {
         setIsLoading(false);
         return;
       }
-      // Check if user exists
-      const checkRes = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/check-user`, { email: formData.email });
-      if (checkRes.data.exists) {
-        toast({
-          title: "User already exists",
-          description: "Please sign in.",
-          variant: "destructive"
-        });
-        setActiveTab("signin");
-        setIsLoading(false);
-        return;
+
+      // Check if user exists using localhost API (optional - skip if API fails)
+      try {
+        const checkResult = await checkUserExists(formData.email);
+        if (checkResult.exists) {
+          toast({
+            title: "User already exists",
+            description: "Please sign in.",
+            variant: "destructive"
+          });
+          setActiveTab("signin");
+          setIsLoading(false);
+          return;
+        }
+      } catch (error: any) {
+        if (error.message !== "API_UNAVAILABLE") {
+          throw error;
+        }
+        // If API is unavailable, continue with signup anyway
+        console.log("API unavailable, proceeding with signup");
       }
+
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       // Create user profile in Firestore
@@ -143,9 +210,21 @@ const AuthPage = () => {
       });
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch (error: any) {
+      console.error("Sign up error:", error);
+      let errorMessage = "Sign up failed. Please try again.";
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already registered. Please sign in.";
+        setActiveTab("signin");
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. Please use a stronger password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address. Please check your email.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Sign up failed. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
