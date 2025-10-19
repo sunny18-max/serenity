@@ -161,7 +161,7 @@ const Sidebar = ({
 
   return (
     <div className={cn(
-      "bg-background/95 backdrop-blur-md border-r border-primary/10 transition-all duration-300 flex flex-col",
+      "bg-background/95 backdrop-blur-md border-r border-primary/10 transition-all duration-300 flex-col hidden lg:flex",
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Header */}
@@ -524,8 +524,62 @@ const Dashboard = () => {
     ? assessmentHistory.slice(-3).reverse()
     : [];
 
+  // Mobile Bottom Navigation Component
+  const BottomNav = () => {
+    const navigate = useNavigate();
+    const mobileMenuItems = [
+      { icon: Home, label: "Home", path: "/dashboard" },
+      { icon: BarChart3, label: "Assess", path: "/assessment-center" },
+      { icon: LineChart, label: "Progress", path: "/progress" },
+      { icon: Users, label: "Community", path: "/community" },
+      { icon: User, label: "Profile", path: "/settings" },
+    ];
+
+    return (
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-primary/20 shadow-2xl">
+        <div className="grid grid-cols-5 gap-1 px-2 py-2 safe-bottom">
+          {mobileMenuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={cn(
+                  "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-200",
+                  isActive 
+                    ? "bg-primary/15 text-primary" 
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/5"
+                )}
+              >
+                <Icon className={cn(
+                  "w-5 h-5 mb-1 transition-transform",
+                  isActive && "scale-110"
+                )} />
+                <span className={cn(
+                  "text-xs font-medium",
+                  isActive && "font-semibold"
+                )}>
+                  {item.label}
+                </span>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid flex">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid flex pb-16 lg:pb-0">
       {/* Sidebar */}
       <Sidebar 
         isCollapsed={sidebarCollapsed} 
@@ -546,45 +600,85 @@ const Dashboard = () => {
         )}
 
         <div className="flex-1 overflow-auto">
-          <div className="container mx-auto px-6 py-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
-                  <User className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold">
-                    Welcome back,{" "}
-                    <span className="text-primary font-cursive">
-                      {userData?.name || "User"}
-                    </span>
-                    !
-                  </h1>
-                  <p className="text-muted-foreground font-body">
-                    {userData?.streak > 0
-                      ? `You're on a ${userData.streak} day streak! Keep it up.`
-                      : "Ready to start your wellness journey?"}
-                  </p>
+          <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+            {/* Header - Mobile Optimized */}
+            <div className="mb-6 sm:mb-8">
+              {/* Mobile Header */}
+              <div className="lg:hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-lg font-bold">
+                        Hi, <span className="text-primary font-cursive">{userData?.name || "User"}</span>!
+                      </h1>
+                      <p className="text-xs text-muted-foreground">
+                        {userData?.streak > 0 ? `${userData.streak} day streak 🔥` : "Start your journey"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9"
+                      onClick={() => navigate("/settings")}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-9 w-9"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate("/settings")}
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4" />
-                </Button>
+              {/* Desktop Header */}
+              <div className="hidden lg:flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold">
+                      Welcome back,{" "}
+                      <span className="text-primary font-cursive">
+                        {userData?.name || "User"}
+                      </span>
+                      !
+                    </h1>
+                    <p className="text-muted-foreground font-body">
+                      {userData?.streak > 0
+                        ? `You're on a ${userData.streak} day streak! Keep it up.`
+                        : "Ready to start your wellness journey?"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate("/settings")}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleLogout}>
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
               {[
                 { title: "Wellness Score", icon: Heart, value: `${userData?.wellness_score || 0}%`, subtitle: userData?.wellness_score >= 80 ? "Excellent!" : userData?.wellness_score >= 50 ? "Good progress" : "Keep working on it", color: "text-energy" },
                 { title: "Current Streak", icon: Target, value: userData?.streak || 0, subtitle: "Days in a row", color: "text-focus" },
@@ -599,20 +693,20 @@ const Dashboard = () => {
                   whileHover={{ scale: 1.05, y: -5 }}
                 >
                   <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300 h-full">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                      <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6">
+                      <CardTitle className="text-xs sm:text-sm font-medium">{stat.title}</CardTitle>
+                      <stat.icon className={`w-3 h-3 sm:w-4 sm:h-4 ${stat.color}`} />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-3 sm:p-6 pt-0">
                       <motion.div 
-                        className={`text-2xl font-bold ${stat.color}`}
+                        className={`text-xl sm:text-2xl font-bold ${stat.color}`}
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ duration: 0.5, delay: index * 0.1 + 0.2, type: "spring" }}
                       >
                         {stat.value}
                       </motion.div>
-                      <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.subtitle}</p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -874,6 +968,9 @@ const Dashboard = () => {
         </div>
       </div>
       <VoiceAssistant />
+      
+      {/* Mobile Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };
