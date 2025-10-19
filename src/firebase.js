@@ -12,6 +12,13 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// Debug: Check if environment variables are loaded
+console.log("Firebase Config:", {
+  authDomain: firebaseConfig.authDomain,
+  projectId: firebaseConfig.projectId,
+  hasApiKey: !!firebaseConfig.apiKey
+});
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

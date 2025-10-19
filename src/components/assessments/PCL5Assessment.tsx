@@ -4,40 +4,47 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Activity } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
-interface StressAssessmentProps {
+interface PCL5AssessmentProps {
   onComplete: (score: number, answers: Record<string, string>) => void;
   onBack: () => void;
 }
 
-const StressAssessment = ({ onComplete, onBack }: StressAssessmentProps) => {
+const PCL5Assessment = ({ onComplete, onBack }: PCL5AssessmentProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const questions = [
-    "In the last month, how often have you been upset because of something that happened unexpectedly?",
-    "In the last month, how often have you felt that you were unable to control the important things in your life?",
-    "In the last month, how often have you felt nervous and stressed?",
-    "In the last month, how often have you felt confident about your ability to handle your personal problems?",
-    "In the last month, how often have you felt that things were going your way?",
-    "In the last month, how often have you found that you could not cope with all the things that you had to do?",
-    "In the last month, how often have you been able to control irritations in your life?",
-    "In the last month, how often have you felt that you were on top of things?",
-    "In the last month, how often have you been angered because of things that happened that were outside of your control?",
-    "In the last month, how often have you felt difficulties were piling up so high that you could not overcome them?"
+    "Repeated, disturbing, and unwanted memories of the stressful experience?",
+    "Repeated, disturbing dreams of the stressful experience?",
+    "Suddenly feeling or acting as if the stressful experience were actually happening again?",
+    "Feeling very upset when something reminded you of the stressful experience?",
+    "Having strong physical reactions when something reminded you of the stressful experience?",
+    "Avoiding memories, thoughts, or feelings related to the stressful experience?",
+    "Avoiding external reminders of the stressful experience?",
+    "Trouble remembering important parts of the stressful experience?",
+    "Having strong negative beliefs about yourself, other people, or the world?",
+    "Blaming yourself or someone else for the stressful experience?",
+    "Having strong negative feelings such as fear, horror, anger, guilt, or shame?",
+    "Loss of interest in activities that you used to enjoy?",
+    "Feeling distant or cut off from other people?",
+    "Trouble experiencing positive feelings?",
+    "Irritable behavior, angry outbursts, or acting aggressively?",
+    "Taking too many risks or doing things that could cause you harm?",
+    "Being 'superalert' or watchful or on guard?",
+    "Feeling jumpy or easily startled?",
+    "Having difficulty concentrating?",
+    "Trouble falling or staying asleep?"
   ];
 
   const options = [
-    { value: "0", label: "Never" },
-    { value: "1", label: "Almost never" },
-    { value: "2", label: "Sometimes" },
-    { value: "3", label: "Fairly often" },
-    { value: "4", label: "Very often" }
+    { value: "0", label: "Not at all" },
+    { value: "1", label: "A little bit" },
+    { value: "2", label: "Moderately" },
+    { value: "3", label: "Quite a bit" },
+    { value: "4", label: "Extremely" }
   ];
-
-  // Questions 4, 5, 7, 8 are reverse scored
-  const reverseScored = [3, 4, 6, 7];
 
   const handleAnswer = (value: string) => {
     setAnswers({ ...answers, [currentQuestion]: value });
@@ -47,14 +54,8 @@ const StressAssessment = ({ onComplete, onBack }: StressAssessmentProps) => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      // Calculate total score with reverse scoring
-      const totalScore = Object.entries(answers).reduce((sum, [questionIndex, value]) => {
-        const numValue = parseInt(value);
-        const isReverseScored = reverseScored.includes(parseInt(questionIndex));
-        const score = isReverseScored ? 4 - numValue : numValue;
-        return sum + score;
-      }, 0);
-      
+      // Calculate total score
+      const totalScore = Object.values(answers).reduce((sum, val) => sum + parseInt(val), 0);
       onComplete(totalScore, answers);
     }
   };
@@ -73,11 +74,11 @@ const StressAssessment = ({ onComplete, onBack }: StressAssessmentProps) => {
       <Card className="shadow-medium border-energy/20">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 bg-energy/10 rounded-full flex items-center justify-center mb-4">
-            <Activity className="w-6 h-6 text-energy" />
+            <AlertTriangle className="w-6 h-6 text-energy" />
           </div>
-          <CardTitle className="text-2xl">Perceived Stress Scale</CardTitle>
+          <CardTitle className="text-2xl">PCL-5 PTSD Assessment</CardTitle>
           <CardDescription>
-            Please indicate how often you felt or thought a certain way in the last month.
+            In the past month, how much have you been bothered by the following problems?
           </CardDescription>
         </CardHeader>
         
@@ -134,7 +135,7 @@ const StressAssessment = ({ onComplete, onBack }: StressAssessmentProps) => {
               <Button
                 onClick={handleNext}
                 disabled={!canProceed}
-                className="min-w-24"
+                className="min-w-24 bg-energy hover:bg-energy/90"
               >
                 {currentQuestion === questions.length - 1 ? "Complete" : "Next"}
               </Button>
@@ -146,4 +147,4 @@ const StressAssessment = ({ onComplete, onBack }: StressAssessmentProps) => {
   );
 };
 
-export default StressAssessment;
+export default PCL5Assessment;

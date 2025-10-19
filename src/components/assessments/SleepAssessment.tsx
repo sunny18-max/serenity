@@ -8,9 +8,10 @@ import { Moon } from "lucide-react";
 
 interface SleepAssessmentProps {
   onComplete: (score: number, answers: Record<string, string>) => void;
+  onBack: () => void;
 }
 
-const SleepAssessment = ({ onComplete }: SleepAssessmentProps) => {
+const SleepAssessment = ({ onComplete, onBack }: SleepAssessmentProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -132,8 +133,8 @@ const SleepAssessment = ({ onComplete }: SleepAssessmentProps) => {
             >
               {options[currentQuestion].map((option) => (
                 <div key={option.value} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value={option.value} id={option.value} />
-                  <Label htmlFor={option.value} className="flex-1 cursor-pointer">
+                  <RadioGroupItem value={option.value} id={`q${currentQuestion}-${option.value}`} />
+                  <Label htmlFor={`q${currentQuestion}-${option.value}`} className="flex-1 cursor-pointer">
                     {option.label}
                   </Label>
                 </div>
@@ -144,19 +145,28 @@ const SleepAssessment = ({ onComplete }: SleepAssessmentProps) => {
           <div className="flex justify-between pt-6">
             <Button
               variant="outline"
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
+              onClick={onBack}
             >
-              Previous
+              Back to Assessments
             </Button>
             
-            <Button
-              onClick={handleNext}
-              disabled={!canProceed}
-              className="min-w-24"
-            >
-              {currentQuestion === questions.length - 1 ? "Complete" : "Next"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={currentQuestion === 0}
+              >
+                Previous
+              </Button>
+              
+              <Button
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="min-w-24"
+              >
+                {currentQuestion === questions.length - 1 ? "Complete" : "Next"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

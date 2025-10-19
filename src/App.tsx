@@ -9,7 +9,6 @@ import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
-import Assessment from "./pages/Assessment";
 import AuthPage from "./pages/AuthPage";
 import AssessmentCenter from "./pages/AssessmentCenter";
 import SettingsPage from "./pages/Settings";
@@ -17,6 +16,14 @@ import ProgressPage from "./pages/Progress";
 import Resources from "./components/Resources";
 import Community from "./components/Community";
 import Achievements from "./components/Achievements";
+import AITherapist from "./pages/AITherapist";
+import Mindfulness from "./pages/Mindfulness";
+import Gamification from "./pages/Gamification";
+import EmergencyHelp from "./pages/EmergencyHelp";
+import MoodTracker from "./pages/MoodTracker";
+import WellnessGames from "./pages/WellnessGames";
+import SpotifyWellness from "./pages/SpotifyWellness";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,13 +38,19 @@ const App = () => (
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
-          <Route path="/assessment" element={<Assessment />} />
+          <Route path="/wellness-games" element={<WellnessGames />} />
+          <Route path="/spotify-wellness" element={<SpotifyWellness />} />
           <Route path="/assessment-center" element={<AssessmentCenter />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/community" element={<Community />} />
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/ai-therapist" element={<AITherapist />} />
+          <Route path="/mindfulness" element={<Mindfulness />} />
+          <Route path="/gamification" element={<Gamification />} />
+          <Route path="/emergency-help" element={<EmergencyHelp />} />
+          <Route path="/mood-tracker" element={<MoodTracker />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

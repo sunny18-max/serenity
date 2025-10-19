@@ -7,7 +7,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import WelcomeGreeting from "@/components/WelcomeGreeting";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, limit, onSnapshot, addDoc, updateDoc } from "firebase/firestore";
+import { motion } from "framer-motion";
 import { 
   Brain, 
   Heart, 
@@ -32,7 +33,8 @@ import {
   Users,
   Award,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Music
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -413,25 +415,29 @@ const Dashboard = () => {
       }
     });
 
-    // Sample notifications (can be replaced with backend notifications)
-    setNotifications([
-      {
-        id: 1,
-        title: "Daily Check-in Reminder",
-        message: "How are you feeling today? Take a moment for your daily wellness check.",
-        read: false,
-        timestamp: new Date(),
-        type: "reminder",
-      },
-      {
-        id: 2,
-        title: "Welcome to Serenity!",
-        message: "Your dashboard is ready with personalized insights.",
-        read: false,
-        timestamp: new Date(Date.now() - 86400000),
-        type: "info",
-      },
-    ]);
+    // Real-time notifications from Firebase
+    const user = auth.currentUser;
+    if (user) {
+      const notificationsRef = collection(db, "users", user.uid, "notifications");
+      const notificationsQuery = query(notificationsRef, orderBy("timestamp", "desc"), limit(10));
+      
+      const unsubscribeNotifications = onSnapshot(notificationsQuery, (snapshot) => {
+        const notifs = snapshot.docs.map((doc) => ({
+          id: parseInt(doc.id) || Math.random(),
+          title: doc.data().title,
+          message: doc.data().message,
+          read: doc.data().read || false,
+          timestamp: doc.data().timestamp?.toDate() || new Date(),
+          type: doc.data().type || "info",
+        }));
+        setNotifications(notifs);
+      });
+
+      return () => {
+        unsubscribe();
+        unsubscribeNotifications();
+      };
+    }
 
     return () => unsubscribe();
   }, [navigate, toast, hasCheckedWelcome]);
@@ -445,10 +451,22 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handleMarkAsRead = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const handleMarkAsRead = async (id: number) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    try {
+      // Update in Firebase
+      const notificationRef = doc(db, "users", user.uid, "notifications", id.toString());
+      await updateDoc(notificationRef, { read: true });
+      
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
 
   const handleMoodSelection = async (mood: number) => {
@@ -567,69 +585,44 @@ const Dashboard = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Wellness Score</CardTitle>
-                  <Heart className="w-4 h-4 text-energy" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-energy">
-                    {userData?.wellness_score || 0}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {userData?.wellness_score >= 70
-                      ? "Excellent progress"
-                      : userData?.wellness_score >= 50
-                      ? "Good progress"
-                      : "Keep working on it"}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-                  <Target className="w-4 h-4 text-focus" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-focus">
-                    {userData?.streak || 0}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Days in a row</p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Assessments</CardTitle>
-                  <Brain className="w-4 h-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-primary">
-                    {assessmentHistory.length}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Completed</p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">This Week</CardTitle>
-                  <TrendingUp className="w-4 h-4 text-wellness" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-wellness">
-                    +{Math.floor(Math.random() * 15) + 5}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">Mood improvement</p>
-                </CardContent>
-              </Card>
+              {[
+                { title: "Wellness Score", icon: Heart, value: `${userData?.wellness_score || 0}%`, subtitle: userData?.wellness_score >= 80 ? "Excellent!" : userData?.wellness_score >= 50 ? "Good progress" : "Keep working on it", color: "text-energy" },
+                { title: "Current Streak", icon: Target, value: userData?.streak || 0, subtitle: "Days in a row", color: "text-focus" },
+                { title: "Assessments", icon: Brain, value: assessmentHistory.length, subtitle: "Completed", color: "text-primary" },
+                { title: "This Week", icon: TrendingUp, value: `+${Math.floor(Math.random() * 15) + 5}%`, subtitle: "Mood improvement", color: "text-wellness" }
+              ].map((stat, index) => (
+                <motion.div
+                  key={stat.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                >
+                  <Card className="shadow-medium border-primary/10 hover:shadow-glow transition-all duration-300 h-full">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                      <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                    </CardHeader>
+                    <CardContent>
+                      <motion.div 
+                        className={`text-2xl font-bold ${stat.color}`}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 + 0.2, type: "spring" }}
+                      >
+                        {stat.value}
+                      </motion.div>
+                      <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
             </div>
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                {/* Quick Actions */}
+                {/* Quick Actions - Enhanced */}
                 <Card className="shadow-medium border-primary/10">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -637,26 +630,74 @@ const Dashboard = () => {
                       Quick Actions
                     </CardTitle>
                     <CardDescription>
-                      Get started with your mental wellness journey
+                      Access your wellness tools instantly
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                       <Button
-                        size="lg"
-                        className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
-                        onClick={() => navigate("/assessment-center")}
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/ai-therapist")}
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Take Assessment
+                        <Brain className="w-6 h-6 text-primary" />
+                        <span className="text-xs font-medium">AI Therapist</span>
                       </Button>
                       <Button
                         variant="outline"
-                        size="lg"
-                        onClick={() => navigate("/progress")}
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/mood-tracker")}
                       >
-                        <BarChart3 className="w-4 h-4 mr-2" />
-                        View Progress
+                        <Heart className="w-6 h-6 text-energy" />
+                        <span className="text-xs font-medium">Mood Tracker</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/mindfulness")}
+                      >
+                        <Sparkles className="w-6 h-6 text-wellness" />
+                        <span className="text-xs font-medium">Mindfulness</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/gamification")}
+                      >
+                        <Target className="w-6 h-6 text-focus" />
+                        <span className="text-xs font-medium">Achievements</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/assessment-center")}
+                      >
+                        <BarChart3 className="w-6 h-6 text-primary" />
+                        <span className="text-xs font-medium">Assessments</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-green-500/10 hover:border-green-500 transition-all"
+                        onClick={() => navigate("/wellness-games")}
+                      >
+                        <Target className="w-6 h-6 text-green-500" />
+                        <span className="text-xs font-medium">Focus Games</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-green-500/10 hover:border-green-500 transition-all bg-gradient-to-br from-black/5 to-green-500/5"
+                        onClick={() => navigate("/spotify-wellness")}
+                      >
+                        <Music className="w-6 h-6 text-green-500" />
+                        <span className="text-xs font-medium">Spotify Music</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-red-500/10 hover:border-red-500 transition-all"
+                        onClick={() => navigate("/emergency-help")}
+                      >
+                        <Heart className="w-6 h-6 text-red-500" />
+                        <span className="text-xs font-medium">Need Help?</span>
                       </Button>
                     </div>
                   </CardContent>

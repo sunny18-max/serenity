@@ -4,6 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Responsive Utilities */
+@import './styles/responsive.css';
+
 /* Serenity Mental Health Platform Design System */
 
 @layer base {
@@ -127,6 +130,10 @@
 @layer base {
   * {
     @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {

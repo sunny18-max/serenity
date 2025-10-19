@@ -1,0 +1,235 @@
+/* Responsive Utility Classes for Serenity */
+
+/* Breakpoints:
+   - xs: 0-639px (Mobile)
+   - sm: 640px-767px (Large Mobile)
+   - md: 768px-1023px (Tablet)
+   - lg: 1024px-1279px (Desktop)
+   - xl: 1280px+ (Large Desktop)
+*/
+
+/* Container Responsive Padding */
+.responsive-container {
+  @apply px-4 sm:px-6 md:px-8 lg:px-12;
+}
+
+/* Responsive Grid Layouts */
+.grid-responsive-1 {
+  @apply grid grid-cols-1;
+}
+
+.grid-responsive-2 {
+  @apply grid grid-cols-1 sm:grid-cols-2;
+}
+
+.grid-responsive-3 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+.grid-responsive-4 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+/* Responsive Text Sizes */
+.text-responsive-xs {
+  @apply text-xs sm:text-sm;
+}
+
+.text-responsive-sm {
+  @apply text-sm sm:text-base;
+}
+
+.text-responsive-base {
+  @apply text-base sm:text-lg;
+}
+
+.text-responsive-lg {
+  @apply text-lg sm:text-xl md:text-2xl;
+}
+
+.text-responsive-xl {
+  @apply text-xl sm:text-2xl md:text-3xl;
+}
+
+.text-responsive-2xl {
+  @apply text-2xl sm:text-3xl md:text-4xl;
+}
+
+.text-responsive-3xl {
+  @apply text-3xl sm:text-4xl md:text-5xl;
+}
+
+/* Responsive Spacing */
+.space-responsive-sm {
+  @apply space-y-2 sm:space-y-3 md:space-y-4;
+}
+
+.space-responsive-md {
+  @apply space-y-4 sm:space-y-6 md:space-y-8;
+}
+
+.gap-responsive {
+  @apply gap-3 sm:gap-4 md:gap-6;
+}
+
+/* Mobile-First Utilities */
+.hide-mobile {
+  @apply hidden sm:block;
+}
+
+.show-mobile {
+  @apply block sm:hidden;
+}
+
+.hide-tablet {
+  @apply hidden md:block;
+}
+
+.show-tablet {
+  @apply block md:hidden;
+}
+
+/* Responsive Card Padding */
+.card-responsive {
+  @apply p-4 sm:p-6 md:p-8;
+}
+
+/* Responsive Buttons */
+.btn-responsive {
+  @apply text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3;
+}
+
+/* Responsive Flex */
+.flex-responsive {
+  @apply flex flex-col sm:flex-row;
+}
+
+.flex-responsive-reverse {
+  @apply flex flex-col-reverse sm:flex-row;
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm z-40;
+}
+
+.mobile-menu {
+  @apply fixed inset-y-0 left-0 w-64 bg-background border-r border-border shadow-xl z-50 transform transition-transform duration-300;
+}
+
+.mobile-menu.closed {
+  @apply -translate-x-full;
+}
+
+.mobile-menu.open {
+  @apply translate-x-0;
+}
+
+/* Responsive Image Containers */
+.img-responsive {
+  @apply w-full h-auto object-cover;
+}
+
+.aspect-responsive-square {
+  @apply aspect-square;
+}
+
+.aspect-responsive-video {
+  @apply aspect-video;
+}
+
+/* Responsive Navigation */
+.nav-responsive {
+  @apply flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6;
+}
+
+/* Touch-Friendly Targets (44px minimum) */
+.touch-target {
+  @apply min-h-[44px] min-w-[44px];
+}
+
+/* Responsive Modal */
+.modal-responsive {
+  @apply w-full sm:w-11/12 md:w-3/4 lg:w-2/3 xl:w-1/2 max-w-4xl;
+}
+
+/* Responsive Sidebar */
+.sidebar-responsive {
+  @apply w-full md:w-64 lg:w-72;
+}
+
+/* Responsive Stats Grid */
+.stats-grid {
+  @apply grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6;
+}
+
+/* Responsive Form */
+.form-responsive {
+  @apply w-full max-w-md mx-auto px-4 sm:px-0;
+}
+
+/* Responsive Table */
+.table-responsive {
+  @apply overflow-x-auto -mx-4 sm:mx-0;
+}
+
+/* Mobile-Optimized Scrolling */
+.scroll-mobile {
+  @apply overflow-x-auto scrollbar-hide;
+}
+
+/* Responsive Hero Section */
+.hero-responsive {
+  @apply py-12 sm:py-16 md:py-20 lg:py-24;
+}
+
+/* Responsive Section Padding */
+.section-responsive {
+  @apply py-8 sm:py-12 md:py-16 lg:py-20;
+}
+
+/* Tablet-Specific Utilities */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .tablet-text-lg {
+    font-size: 1.125rem;
+  }
+}
+
+/* Mobile-Specific Utilities */
+@media (max-width: 767px) {
+  .mobile-full-width {
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+  }
+  
+  .mobile-sticky-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+  }
+  
+  .mobile-safe-area {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Landscape Mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .landscape-compact {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

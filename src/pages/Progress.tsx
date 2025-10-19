@@ -3,13 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Download, Share2, Calendar, TrendingUp, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Share2, Calendar, TrendingUp, BarChart3, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import AssessmentChart from "@/components/charts/AssessmentChart";
 import ProgressOverview from "@/components/charts/ProgressOverview";
 import { format } from 'date-fns';
 import { auth, db } from "@/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface AssessmentData {
   type: string;
@@ -40,7 +43,7 @@ const Progress = () => {
 
         // Fetch assessments from subcollection
         const assessmentsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "assessments"));
-        const assessmentsList = assessmentsSnapshot.docs.map(doc => doc.data());
+        const assessmentsList = assessmentsSnapshot.docs.map(doc => doc.data() as AssessmentData);
         setAssessments(Array.isArray(assessmentsList) ? assessmentsList : []);
       };
 
@@ -51,32 +54,115 @@ const Progress = () => {
     return assessments.filter(assessment => assessment.type === type);
   };
 
-  const generateReport = () => {
-    const reportData = {
-      user: user?.name || "User",
-      generatedDate: new Date().toISOString(),
-      summary: {
-        totalAssessments: assessments.length,
-        assessmentTypes: [...new Set(assessments.map(a => a.type))],
-        dateRange: assessments.length > 0 ? {
-          start: assessments[0].date,
-          end: assessments[assessments.length - 1].date
-        } : null
-      },
-      assessments: assessments,
-      insights: generateInsights()
-    };
+  const generatePDFReport = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    const dataStr = JSON.stringify(reportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    // Title
+    doc.setFontSize(22);
+    doc.setTextColor(99, 102, 241);
+    doc.text('Progress Report', pageWidth / 2, 20, { align: 'center' });
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mental-health-report-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    link.click();
+    // Date
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${format(new Date(), 'PPP')}`, pageWidth / 2, 28, { align: 'center' });
 
-    URL.revokeObjectURL(url);
+    // User Info
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`User: ${user?.name || 'Anonymous'}`, 14, 40);
+    doc.text(`Wellness Score: ${user?.wellness_score || 0}`, 14, 47);
+    doc.text(`Current Streak: ${user?.streak || 0} days`, 14, 54);
+    doc.text(`Total Assessments: ${assessments.length}`, 14, 61);
+
+    // Assessments Table
+    if (assessments.length > 0) {
+      doc.setFontSize(14);
+      doc.setTextColor(99, 102, 241);
+      doc.text('Assessment History', 14, 75);
+
+      const tableData = assessments.slice(0, 10).map(a => [
+        format(new Date(a.date), 'MMM dd, yyyy'),
+        a.type.toUpperCase(),
+        a.score.toString(),
+        a.interpretation
+      ]);
+
+      autoTable(doc, {
+        startY: 80,
+        head: [['Date', 'Type', 'Score', 'Interpretation']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [99, 102, 241] },
+      });
+    }
+
+    // Insights
+    const insights = generateInsights();
+    if (insights.length > 0) {
+      const finalY = (doc as any).lastAutoTable?.finalY || 85;
+      doc.setFontSize(14);
+      doc.setTextColor(99, 102, 241);
+      doc.text('Key Insights', 14, finalY + 15);
+
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      let yPos = finalY + 22;
+      insights.forEach((insight, index) => {
+        if (yPos > pageHeight - 30) {
+          doc.addPage();
+          yPos = 20;
+        }
+        const lines = doc.splitTextToSize(`• ${insight.message}`, pageWidth - 28);
+        doc.text(lines, 14, yPos);
+        yPos += lines.length * 5 + 3;
+      });
+    }
+
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `Serenity - Mental Wellness Platform | Page ${i} of ${totalPages}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`serenity-progress-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  };
+
+  const handleShare = () => {
+    const shareText = `I've been tracking my mental wellness journey with Serenity! 🌟\n\n📊 Progress Summary:\n• ${assessments.length} assessments completed\n• ${user?.streak || 0} day streak\n• Wellness Score: ${user?.wellness_score || 0}\n\nTaking care of mental health matters! #MentalHealth #Wellness #SelfCare`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'My Mental Wellness Progress',
+        text: shareText,
+      }).catch(() => {});
+    } else {
+      // Fallback: Copy to clipboard and show social media options
+      navigator.clipboard.writeText(shareText);
+      
+      const shareUrls = {
+        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
+        whatsapp: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      };
+      
+      // Show options dialog
+      const choice = confirm('Share on social media?\n\nOK = Twitter\nCancel = Copy to clipboard (Done!)');
+      if (choice) {
+        window.open(shareUrls.twitter, '_blank');
+      }
+    }
   };
 
   const generateInsights = () => {
@@ -92,6 +178,18 @@ const Progress = () => {
         insights.push({
           type: 'positive',
           message: `Your depression scores have improved by ${Math.abs(trend)} points since your first assessment.`
+        });
+      }
+    }
+
+    // Check PTSD improvements
+    const pcl5Data = getAssessmentsByType('pcl5');
+    if (pcl5Data.length >= 2) {
+      const trend = pcl5Data[pcl5Data.length - 1].score - pcl5Data[0].score;
+      if (trend < 0) {
+        insights.push({
+          type: 'positive',
+          message: `Your PTSD symptoms have improved by ${Math.abs(trend)} points since your first assessment.`
         });
       }
     }
@@ -122,6 +220,7 @@ const Progress = () => {
   const assessmentTypes = [
     { id: 'phq9', name: 'Depression (PHQ-9)', description: 'Track symptoms of depression over time' },
     { id: 'gad7', name: 'Anxiety (GAD-7)', description: 'Monitor generalized anxiety disorder symptoms' },
+    { id: 'pcl5', name: 'PTSD (PCL-5)', description: 'Track post-traumatic stress disorder symptoms' },
     { id: 'stress', name: 'Stress Level', description: 'Evaluate perceived stress and coping mechanisms' },
     { id: 'wellness', name: 'Overall Wellness', description: 'Overall well-being across life domains' },
     { id: 'sleep', name: 'Sleep Quality', description: 'Sleep patterns and quality assessment' }
@@ -133,7 +232,12 @@ const Progress = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-6 py-8 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <motion.div 
+          className="flex items-center justify-between mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <div className="flex items-center gap-4">
             <Button
               variant="outline"
@@ -143,55 +247,75 @@ const Progress = () => {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <Badge className="mb-2 px-3 py-1 bg-primary/10 border-primary/30">
+                <Sparkles className="w-3 h-3 mr-1" />
+                Your Journey
+              </Badge>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Progress Reports
               </h1>
               <p className="text-muted-foreground">Comprehensive view of your mental health journey</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={generateReport} className="flex items-center gap-2">
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Button variant="outline" onClick={generatePDFReport} className="flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Export Report
+              Export PDF
             </Button>
-            <Button variant="outline" className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2">
               <Share2 className="w-4 h-4" />
               Share
             </Button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="shadow-medium">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <BarChart3 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{assessments.length}</p>
-                  <p className="text-sm text-muted-foreground">Total Assessments</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-medium">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-wellness/10 rounded-full flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-wellness" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{user?.wellnessScore || 0}</p>
-                  <p className="text-sm text-muted-foreground">Wellness Score</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+          {[
+            { icon: BarChart3, value: assessments.length, label: "Total Assessments", color: "primary" },
+            { icon: TrendingUp, value: user?.wellness_score || 0, label: "Wellness Score", color: "wellness" },
+            { icon: Calendar, value: user?.streak || 0, label: "Day Streak", color: "energy" }
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              whileHover={{ scale: 1.05, y: -5 }}
+            >
+              <Card className="shadow-medium hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      className={`w-10 h-10 bg-${stat.color}/10 rounded-full flex items-center justify-center`}
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      <stat.icon className={`w-5 h-5 text-${stat.color}`} />
+                    </motion.div>
+                    <div>
+                      <motion.p 
+                        className="text-2xl font-bold"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 + 0.3, type: "spring" }}
+                      >
+                        {stat.value}
+                      </motion.p>
+                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+          
           <Card className="shadow-medium">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
@@ -299,6 +423,7 @@ const Progress = () => {
                             <h3 className="font-medium capitalize">
                               {assessment.type === 'phq9' ? 'PHQ-9 Depression' :
                                assessment.type === 'gad7' ? 'GAD-7 Anxiety' :
+                               assessment.type === 'pcl5' ? 'PCL-5 PTSD' :
                                assessment.type === 'stress' ? 'Stress Assessment' :
                                assessment.type === 'wellness' ? 'Wellness Assessment' :
                                assessment.type === 'sleep' ? 'Sleep Quality' :

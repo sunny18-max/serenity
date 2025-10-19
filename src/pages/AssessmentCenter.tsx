@@ -2,18 +2,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Shield, Activity, Heart, ArrowLeft, CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { Brain, Shield, Activity, Heart, ArrowLeft, CheckCircle, Clock, TrendingUp, AlertTriangle, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import PHQ9Assessment from "@/components/assessments/PHQ9Assessment";
 import GAD7Assessment from "@/components/assessments/GAD7Assessment";
 import StressAssessment from "@/components/assessments/StressAssessment";
 import WellnessAssessment from "@/components/assessments/WellnessAssessment";
 import SleepAssessment from "@/components/assessments/SleepAssessment";
-import { useToast } from "@/hooks/use-toast";
+import PCL5Assessment from "@/components/assessments/PCL5Assessment";
+import { useToast } from "@/components/ui/use-toast";
+import { notifyAssessmentCompleted } from "@/lib/notifications";
 import { auth, db } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
 
-type AssessmentType = "select" | "phq9" | "gad7" | "stress" | "wellness" | "sleep";
+type AssessmentType = "select" | "phq9" | "gad7" | "stress" | "wellness" | "sleep" | "pcl5";
 
 const AssessmentCenter = () => {
   const [currentAssessment, setCurrentAssessment] = useState<AssessmentType>("select");
@@ -29,7 +32,8 @@ const AssessmentCenter = () => {
       duration: "5-7 minutes",
       questions: "9 questions",
       color: "text-primary",
-      bgColor: "bg-primary/10"
+      bgColor: "bg-primary/10",
+      image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop"
     },
     {
       id: "gad7",
@@ -39,7 +43,19 @@ const AssessmentCenter = () => {
       duration: "4-6 minutes",
       questions: "7 questions",
       color: "text-calm",
-      bgColor: "bg-calm/10"
+      bgColor: "bg-calm/10",
+      image: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=400&h=300&fit=crop"
+    },
+    {
+      id: "pcl5",
+      title: "PCL-5 PTSD Assessment",
+      description: "Screen for post-traumatic stress disorder symptoms",
+      icon: AlertTriangle,
+      duration: "10-15 minutes",
+      questions: "20 questions",
+      color: "text-energy",
+      bgColor: "bg-energy/10",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop"
     },
     {
       id: "stress",
@@ -48,8 +64,9 @@ const AssessmentCenter = () => {
       icon: Activity,
       duration: "6-8 minutes", 
       questions: "10 questions",
-      color: "text-energy",
-      bgColor: "bg-energy/10"
+      color: "text-warning",
+      bgColor: "bg-warning/10",
+      image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
     },
     {
       id: "wellness",
@@ -59,7 +76,8 @@ const AssessmentCenter = () => {
       duration: "7-10 minutes",
       questions: "10 questions", 
       color: "text-wellness",
-      bgColor: "bg-wellness/10"
+      bgColor: "bg-wellness/10",
+      image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
     },
     {
       id: "sleep",
@@ -69,7 +87,8 @@ const AssessmentCenter = () => {
       duration: "5-8 minutes",
       questions: "8 questions",
       color: "text-focus", 
-      bgColor: "bg-focus/10"
+      bgColor: "bg-focus/10",
+      image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=400&h=300&fit=crop"
     }
   ];
 
@@ -91,6 +110,10 @@ const AssessmentCenter = () => {
           collection(db, "users", user.uid, "assessments"),
           result
         );
+        
+        // Create notification
+        await notifyAssessmentCompleted(type, score);
+        
         toast({
           title: "Assessment Complete",
           description: `Your ${type.toUpperCase()} assessment has been saved. Score: ${score}`,
@@ -126,6 +149,12 @@ const AssessmentCenter = () => {
         if (score <= 9) return "Mild anxiety";
         if (score <= 14) return "Moderate anxiety";
         return "Severe anxiety";
+      case "pcl5":
+        if (score <= 19) return "Minimal PTSD symptoms";
+        if (score <= 36) return "Mild PTSD symptoms";
+        if (score <= 52) return "Moderate PTSD symptoms";
+        if (score <= 68) return "Moderately severe PTSD symptoms";
+        return "Severe PTSD symptoms";
       case "stress":
         if (score <= 13) return "Low stress";
         if (score <= 26) return "Moderate stress";
@@ -156,6 +185,7 @@ const AssessmentCenter = () => {
         <div className="container mx-auto py-8">
           {currentAssessment === "phq9" && <PHQ9Assessment {...props} />}
           {currentAssessment === "gad7" && <GAD7Assessment {...props} />}
+          {currentAssessment === "pcl5" && <PCL5Assessment {...props} />}
           {currentAssessment === "stress" && <StressAssessment {...props} />}
           {currentAssessment === "wellness" && <WellnessAssessment {...props} />}
           {currentAssessment === "sleep" && <SleepAssessment {...props} />}
@@ -178,52 +208,81 @@ const AssessmentCenter = () => {
           </Button>
         </div>
 
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-serif font-bold mb-4 text-gradient-primary">Assessment Center</h1>
+        <motion.div 
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Badge className="mb-4 px-4 py-2 bg-primary/10 border-primary/30">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Professional Mental Health Screenings
+          </Badge>
+          <h1 className="text-5xl font-serif font-bold mb-4 text-gradient-primary">Assessment Center</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Take validated mental health screenings to track your wellbeing and get personalized insights
           </p>
-        </div>
+        </motion.div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {assessments.map((assessment) => {
+          {assessments.map((assessment, index) => {
             const Icon = assessment.icon;
             return (
-              <Card 
+              <motion.div
                 key={assessment.id}
-                className="hover:shadow-medium transition-all duration-300 hover:-translate-y-1 cursor-pointer group"
-                onClick={() => setCurrentAssessment(assessment.id as AssessmentType)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ scale: 1.03, y: -5 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <CardHeader className="pb-4">
-                  <div className={`w-12 h-12 ${assessment.bgColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className={`w-6 h-6 ${assessment.color}`} />
-                  </div>
-                  <CardTitle className="text-xl font-serif">{assessment.title}</CardTitle>
-                  <CardDescription className="text-base">
-                    {assessment.description}
-                  </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{assessment.duration}</span>
+                <Card 
+                  className="hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden h-full border-2 hover:border-primary/30"
+                  onClick={() => setCurrentAssessment(assessment.id as AssessmentType)}
+                >
+                  {/* Image Header */}
+                  <div className="relative h-40 overflow-hidden">
+                    <img 
+                      src={assessment.image} 
+                      alt={assessment.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className={`absolute top-4 left-4 w-12 h-12 ${assessment.bgColor} backdrop-blur-sm rounded-xl flex items-center justify-center shadow-lg`}>
+                      <Icon className={`w-6 h-6 ${assessment.color}`} />
                     </div>
-                    <Badge variant="secondary">{assessment.questions}</Badge>
                   </div>
-                  
-                  <Button 
-                    className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentAssessment(assessment.id as AssessmentType);
-                    }}
-                  >
-                    Start Assessment
-                  </Button>
-                </CardContent>
-              </Card>
+
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-xl font-serif group-hover:text-primary transition-colors">
+                      {assessment.title}
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      {assessment.description}
+                    </CardDescription>
+                  </CardHeader>
+                
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{assessment.duration}</span>
+                      </div>
+                      <Badge variant="secondary">{assessment.questions}</Badge>
+                    </div>
+                    
+                    <Button 
+                      className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentAssessment(assessment.id as AssessmentType);
+                      }}
+                    >
+                      Start Assessment
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
         </div>

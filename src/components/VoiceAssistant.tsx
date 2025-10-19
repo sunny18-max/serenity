@@ -1,23 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { MessageCircle, X, Mic, MicOff, Send } from 'lucide-react';
-
-const quickQuestions = [
-  "How do I take an assessment?",
-  "Show me my progress",
-  "How do I track my mood?",
-  "What is Serenity?",
-  "How do I export my data?"
-];
-
-const quickAnswers: Record<string, string> = {
-  "how do i take an assessment": "Go to your Dashboard and click the 'Take Assessment' button. You'll see a series of questions about your mental wellness. Answer them honestly and submit to get your results and recommendations.",
-  "show me my progress": "Visit the Progress page from the sidebar. There you'll see charts showing your assessment scores over time, mood trends, and insights about your mental wellness journey.",
-  "how do i track my mood": "Use the daily mood check-in on your Dashboard. Select your current mood, add an optional note about how you're feeling, and save it. You can view your mood history in the Progress section.",
-  "what is serenity": "Serenity is your personal mental wellness companion. It helps you track your mood, take assessments, monitor your progress, and provides tools and insights to support your mental health journey.",
-  "how do i export my data": "Go to Settings → Data Management → Export Data. You can choose to export as PDF for reports or CSV for data analysis. Your privacy is always protected."
-};
+import { MessageCircle, X, Mic, MicOff, Send, Sparkles, Volume2 } from 'lucide-react';
+import { getAIResponse, getQuickSuggestions } from '@/lib/aiAssistant';
+import { useToast } from '@/components/ui/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   type: 'user' | 'assistant';
@@ -27,13 +14,62 @@ interface Message {
 const VoiceAssistant = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [quickSuggestions, setQuickSuggestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputText(transcript);
+        setIsListening(false);
+        // Auto-send after speech recognition
+        handleSendMessage(transcript);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        toast({
+          title: "Speech Recognition Error",
+          description: "Could not recognize speech. Please try again.",
+          variant: "destructive",
+        });
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+
+    // Load initial suggestions
+    setQuickSuggestions(getQuickSuggestions([]));
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,59 +79,113 @@ const VoiceAssistant = () => {
     setMessages(prev => [...prev, { type, text }]);
   };
 
-  const handleQuestionClick = (question: string) => {
+  const handleQuestionClick = async (question: string) => {
     // Add user question to chat
     addMessage('user', question);
+    setIsTyping(true);
     
-    // Find and add assistant response
-    const lowerQuestion = question.toLowerCase();
-    const answer = quickAnswers[lowerQuestion] || "I can help with assessments, progress tracking, mood checks, and data export. What would you like to know?";
-    
-    setTimeout(() => {
-      addMessage('assistant', answer);
-    }, 500);
-  };
-
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
-    
-    // Add user message
-    addMessage('user', inputText);
-    
-    // Find matching response or use default
-    const lowerInput = inputText.toLowerCase();
-    let answer = "I specialize in helping you navigate Serenity. Try asking about assessments, progress tracking, mood checks, or data export.";
-    
-    Object.keys(quickAnswers).forEach(key => {
-      if (lowerInput.includes(key)) {
-        answer = quickAnswers[key];
-      }
-    });
-    
-    setTimeout(() => {
-      addMessage('assistant', answer);
-    }, 500);
-    
-    setInputText('');
-  };
-
-  const toggleRecording = () => {
-    if (isRecording) {
-      window.speechSynthesis.cancel();
-      setIsRecording(false);
-    } else {
-      setIsRecording(true);
-      const greeting = "Hello! I can help you navigate the app. Ask me about features or how to use them.";
-      const utterance = new SpeechSynthesisUtterance(greeting);
-      window.speechSynthesis.speak(utterance);
+    try {
+      // Get AI response
+      const response = await getAIResponse(question, messages);
+      setIsTyping(false);
+      addMessage('assistant', response);
       
-      // Auto-stop after greeting
-      setTimeout(() => setIsRecording(false), 3000);
+      // Speak response if enabled
+      if (isSpeaking) {
+        speakText(response);
+      }
+      
+      // Update suggestions
+      setQuickSuggestions(getQuickSuggestions([...messages, { type: 'user', text: question }, { type: 'assistant', text: response }]));
+    } catch (error) {
+      setIsTyping(false);
+      addMessage('assistant', "I'm having trouble connecting right now. Please try again!");
     }
   };
 
+  const handleSendMessage = async (text?: string) => {
+    const messageText = text || inputText;
+    if (!messageText.trim()) return;
+    
+    // Add user message
+    addMessage('user', messageText);
+    setInputText('');
+    setIsTyping(true);
+    
+    try {
+      // Get AI response
+      const response = await getAIResponse(messageText, messages);
+      setIsTyping(false);
+      addMessage('assistant', response);
+      
+      // Speak response if enabled
+      if (isSpeaking) {
+        speakText(response);
+      }
+      
+      // Update suggestions
+      setQuickSuggestions(getQuickSuggestions([...messages, { type: 'user', text: messageText }, { type: 'assistant', text: response }]));
+    } catch (error) {
+      setIsTyping(false);
+      addMessage('assistant', "I'm having trouble connecting right now. Please try again!");
+    }
+  };
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      toast({
+        title: "Not Supported",
+        description: "Speech recognition is not supported in your browser.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        toast({
+          title: "Listening...",
+          description: "Speak now. I'm listening!",
+        });
+      } catch (error) {
+        console.error('Recognition start error:', error);
+        toast({
+          title: "Error",
+          description: "Could not start speech recognition.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const toggleSpeaking = () => {
+    setIsSpeaking(!isSpeaking);
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+    }
+    toast({
+      title: isSpeaking ? "Voice Off" : "Voice On",
+      description: isSpeaking ? "Responses will not be spoken" : "Responses will be spoken aloud",
+    });
+  };
+
+  const speakText = (text: string) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSendMessage();
     }
   };
@@ -158,8 +248,14 @@ const VoiceAssistant = () => {
 
           {/* Quick Questions */}
           <div className="border-t p-4">
+            {isTyping && (
+              <div className="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                <Sparkles className="w-4 h-4 animate-spin" />
+                <span>Thinking...</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 mb-3">
-              {quickQuestions.map((question, index) => (
+              {quickSuggestions.map((question, index) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -175,12 +271,23 @@ const VoiceAssistant = () => {
             {/* Input Area */}
             <div className="flex gap-2">
               <Button
-                onClick={toggleRecording}
-                variant={isRecording ? "destructive" : "outline"}
+                onClick={toggleListening}
+                variant={isListening ? "destructive" : "outline"}
                 size="icon"
                 className="flex-shrink-0"
+                title="Voice Input"
               >
-                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+              
+              <Button
+                onClick={toggleSpeaking}
+                variant={isSpeaking ? "default" : "outline"}
+                size="icon"
+                className="flex-shrink-0"
+                title="Voice Output"
+              >
+                <Volume2 className="w-4 h-4" />
               </Button>
               
               <input
@@ -188,15 +295,15 @@ const VoiceAssistant = () => {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your question..."
+                placeholder="Type or speak your question..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
               
               <Button
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage()}
                 size="icon"
                 className="flex-shrink-0"
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || isTyping}
               >
                 <Send className="w-4 h-4" />
               </Button>

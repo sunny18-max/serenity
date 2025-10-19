@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
 import { 
   BookOpen, 
   Video, 
@@ -319,15 +320,29 @@ const Resources = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Mental Wellness Resources</h1>
+        <motion.div 
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Badge className="mb-4 px-4 py-2 bg-primary/10 border-primary/30">
+            <BookOpen className="w-4 h-4 mr-2" />
+            Curated Content
+          </Badge>
+          <h1 className="text-5xl font-bold mb-4 text-gradient-primary">Mental Wellness Resources</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Access curated articles, videos, audio guides, and tools to support your mental health journey.
           </p>
-        </div>
+        </motion.div>
 
         {/* Search and Filter */}
-        <div className="mb-8 space-y-4">
+        <motion.div 
+          className="mb-8 space-y-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -346,43 +361,56 @@ const Resources = () => {
 
           {/* Categories */}
           <div className="flex flex-wrap gap-2">
-            {categories.map(category => (
-              <Button
+            {categories.map((category, index) => (
+              <motion.div
                 key={category.id}
-                variant={activeCategory === category.id ? "default" : "outline"}
-                onClick={() => setActiveCategory(category.id)}
-                className="text-sm"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                {category.label}
-              </Button>
+                <Button
+                  variant={activeCategory === category.id ? "default" : "outline"}
+                  onClick={() => setActiveCategory(category.id)}
+                  className="text-sm"
+                >
+                  {category.label}
+                </Button>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* Resources Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredResources.map(resource => {
+          {filteredResources.map((resource, index) => {
             const Icon = getTypeIcon(resource.type);
             const actionButton = getActionButton(resource);
             const ActionIcon = actionButton.icon;
             const isSaved = savedResources.includes(resource.id);
 
             return (
-              <Card key={resource.id} className="hover:shadow-lg transition-all duration-300 group">
-                <CardHeader>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className={`p-2 rounded-lg ${getTypeColor(resource.type)}`}>
-                      <Icon className="w-4 h-4" />
+              <motion.div
+                key={resource.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ scale: 1.03, y: -5 }}
+              >
+                <Card className="hover:shadow-xl transition-all duration-300 group h-full border-2 hover:border-primary/30">
+                  <CardHeader>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className={`p-2 rounded-lg ${getTypeColor(resource.type)}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <Badge variant="secondary" className={getTypeColor(resource.type)}>
+                        {resource.type}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className={getTypeColor(resource.type)}>
-                      {resource.type}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                    {resource.title}
-                  </CardTitle>
-                  <CardDescription>{resource.description}</CardDescription>
-                </CardHeader>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">
+                      {resource.title}
+                    </CardTitle>
+                    <CardDescription>{resource.description}</CardDescription>
+                  </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex items-center text-sm text-muted-foreground">
@@ -426,7 +454,8 @@ const Resources = () => {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              </motion.div>
             );
           })}
         </div>

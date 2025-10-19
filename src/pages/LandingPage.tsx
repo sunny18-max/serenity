@@ -2,13 +2,17 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Heart, TrendingUp, Shield, Users, Bell, CheckCircle, ArrowRight, Sparkles, Activity } from "lucide-react";
+import { Brain, Heart, TrendingUp, Shield, Users, Bell, CheckCircle, ArrowRight, Sparkles, Activity, Mail, Phone, MapPin, Send, Menu, X } from "lucide-react";
 import heroDashboard from "@/assets/hero-dashboard.jpg";
+import { motion } from "framer-motion";
+import { TypeAnimation } from 'react-type-animation';
+import { Link } from "react-router-dom";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 const LandingPage = () => {
   const [activeFeature, setActiveFeature] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -89,30 +93,106 @@ const LandingPage = () => {
       <nav className="fixed top-0 w-full z-50 cyber-glass border-b border-white/20 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3" data-aos="fade-right">
+            <Link to="/" className="flex items-center space-x-3" data-aos="fade-right">
               <div className="w-10 h-10 bg-gradient-hero rounded-xl flex items-center justify-center shadow-neon glow-effect">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-2xl font-cursive font-bold text-gradient-primary cyber-font">Serenity</h1>
-            </div>
+            </Link>
             
             <div className="hidden md:flex items-center space-x-8" data-aos="fade-down">
-              <a href="#features" className="text-foreground/80 hover:text-primary transition-cyber text-neon">Features</a>
-              <a href="about" className="text-foreground/80 hover:text-primary transition-cyber text-neon">About</a>
-              <a href="contact" className="text-foreground/80 hover:text-primary transition-cyber text-neon">Contact</a>
+              <a href="#features" className="relative text-foreground/80 hover:text-primary transition-all duration-300 group">
+                Features
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-primary transition-all duration-300 group-hover:w-full"></span>
+              </a>
+              <Link to="/about" className="relative text-foreground/80 hover:text-primary transition-all duration-300 group">
+                About
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-primary transition-all duration-300 group-hover:w-full"></span>
+              </Link>
+              <Link to="/contact" className="relative text-foreground/80 hover:text-primary transition-all duration-300 group">
+                Contact
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-primary transition-all duration-300 group-hover:w-full"></span>
+              </Link>
             </div>
 
             <div className="flex items-center space-x-4" data-aos="fade-left">
-              <Button variant="ghost" className="hover:bg-primary/10 neon-border" onClick={() => window.location.href = '/auth'}>
-                Sign In
-              </Button>
-              <Button variant="hero" className="cyber-button shadow-medium" onClick={() => window.location.href = '/auth'}>
-                Get Started
-              </Button>
+              {/* Mobile Menu Toggle */}
+              <button
+                className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle menu"
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+        
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden border-t border-white/10 bg-background/95 backdrop-blur-xl"
+          >
+            <div className="container mx-auto px-6 py-4 space-y-4">
+              <a 
+                href="#features" 
+                className="block py-3 px-4 text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <Link 
+                to="/about" 
+                className="block py-3 px-4 text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                About
+              </Link>
+              <Link 
+                to="/contact" 
+                className="block py-3 px-4 text-foreground/80 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Contact
+              </Link>
+              <div className="pt-4 space-y-3 border-t border-border">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-center hover:bg-primary/10" 
+                  onClick={() => {
+                    window.location.href = '/auth';
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  variant="hero" 
+                  className="w-full justify-center cyber-button shadow-medium" 
+                  onClick={() => {
+                    window.location.href = '/auth';
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Get Started
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
@@ -123,9 +203,22 @@ const LandingPage = () => {
             </Badge>
             
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Your Journey to
-              <span className="text-gradient-primary block floating-animation font-cursive">Mental Wellness</span>
-              Starts Here
+              <TypeAnimation
+                sequence={[
+                  'Your Journey to Mental Wellness',
+                  2000,
+                  'Your Path to Inner Peace',
+                  2000,
+                  'Your Road to Better Health',
+                  2000,
+                  'Your Journey to Mental Wellness',
+                ]}
+                wrapper="span"
+                speed={50}
+                className="text-gradient-primary block floating-animation font-cursive"
+                repeat={Infinity}
+              />
+              <span className="block mt-2">Starts Here</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed font-body">
@@ -291,7 +384,7 @@ const LandingPage = () => {
       </section>
 
       {/* Development Team Section */}
-      <section className="py-20 px-6 bg-gradient-to-br from-secondary/5 to-accent/5">
+      <section id="about" className="py-20 px-6 bg-gradient-to-br from-secondary/5 to-accent/5">
         <div className="container mx-auto">
           <div className="text-center mb-16" data-aos="fade-up">
             <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/15 border-primary/30 text-primary neon-text">
@@ -456,7 +549,7 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-foreground/5 backdrop-blur-sm">
+      <footer id="contact" className="py-16 px-6 bg-foreground/5 backdrop-blur-sm">
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="col-span-2" data-aos="fade-right">

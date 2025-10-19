@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Calendar, Target } from "lucide-react";
 import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { auth, db } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 interface AssessmentData {
   type: string;
@@ -13,30 +15,71 @@ interface AssessmentData {
   interpretation: string;
 }
 
-const ProgressOverview = () => {
-  const [assessments, setAssessments] = useState<AssessmentData[]>([]);
+interface ProgressOverviewProps {
+  assessments: AssessmentData[];
+  user: any;
+}
+
+const ProgressOverview = ({ assessments, user }: ProgressOverviewProps) => {
   const [wellnessData, setWellnessData] = useState<any[]>([]);
 
   useEffect(() => {
-    const storedAssessments = localStorage.getItem("assessments");
-    if (storedAssessments) {
-      setAssessments(JSON.parse(storedAssessments));
-    }
+    const fetchWellnessData = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
 
-    // Generate mock wellness data for the last 30 days
-    const endDate = new Date();
-    const startDate = subDays(endDate, 29);
-    const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-    
-    const mockWellnessData = dateRange.map((date, index) => ({
-      date: format(date, 'MMM dd'),
-      mood: Math.floor(Math.random() * 3) + 6 + Math.sin(index * 0.1) * 2, // Simulate mood variations
-      energy: Math.floor(Math.random() * 3) + 5 + Math.cos(index * 0.15) * 1.5,
-      sleep: Math.floor(Math.random() * 2) + 6 + Math.sin(index * 0.2) * 1,
-      stress: Math.floor(Math.random() * 3) + 3 + Math.sin(index * 0.25) * 1.5,
-    }));
-    
-    setWellnessData(mockWellnessData);
+      try {
+        // Fetch user's mood entries from Firebase
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const moods = userData.moods || [];
+          
+          // Generate data for the last 30 days
+          const endDate = new Date();
+          const startDate = subDays(endDate, 29);
+          const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+          
+          // Create a map of dates to mood data
+          const moodMap = new Map();
+          moods.forEach((entry: any) => {
+            const date = format(new Date(entry.date), 'MMM dd');
+            moodMap.set(date, entry);
+          });
+          
+          // Generate wellness data with real mood entries where available
+          const realWellnessData = dateRange.map((date) => {
+            const dateKey = format(date, 'MMM dd');
+            const moodEntry = moodMap.get(dateKey);
+            
+            return {
+              date: dateKey,
+              mood: moodEntry ? moodEntry.mood : null,
+              energy: null, // Can be added when energy tracking is implemented
+              sleep: null,  // Can be added when sleep tracking is implemented
+              stress: null, // Can be added when stress tracking is implemented
+            };
+          });
+          
+          setWellnessData(realWellnessData);
+        }
+      } catch (error) {
+        console.error("Error fetching wellness data:", error);
+        // Fallback to empty data
+        const endDate = new Date();
+        const startDate = subDays(endDate, 29);
+        const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+        setWellnessData(dateRange.map(date => ({
+          date: format(date, 'MMM dd'),
+          mood: null,
+          energy: null,
+          sleep: null,
+          stress: null,
+        })));
+      }
+    };
+
+    fetchWellnessData();
   }, []);
 
   const getAssessmentsByType = (type: string) => {
@@ -201,66 +244,57 @@ const ProgressOverview = () => {
                 Daily Wellness Tracking
               </CardTitle>
               <CardDescription>
-                Monitor your daily mood, energy, sleep, and stress levels
+                Monitor your daily mood from the Mood Tracker
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={wellnessData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="date" />
-                  <YAxis domain={[0, 10]} />
-                  <Tooltip 
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-card p-3 rounded-lg shadow-lg border">
-                            <p className="font-medium">{label}</p>
-                            {payload.map((entry: any, index) => (
-                              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                                {entry.dataKey}: {entry.value}/10
-                              </p>
-                            ))}
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="mood"
-                    stackId="1"
-                    stroke="#f59e0b"
-                    fill="#f59e0b"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="energy"
-                    stackId="2"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="sleep"
-                    stackId="3"
-                    stroke="#6366f1"
-                    fill="#6366f1"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="stress"
-                    stackId="4"
-                    stroke="#ef4444"
-                    fill="#ef4444"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {wellnessData.every(d => d.mood === null) ? (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  <div className="text-center">
+                    <p>No mood data available</p>
+                    <p className="text-sm">Start logging your moods in the Mood Tracker to see trends</p>
+                  </div>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={wellnessData}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                    <XAxis dataKey="date" />
+                    <YAxis domain={[0, 5]} />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-card p-3 rounded-lg shadow-lg border">
+                              <p className="font-medium">{label}</p>
+                              {payload.map((entry: any, index) => {
+                                if (entry.value !== null) {
+                                  const moodLabels = ['Terrible', 'Bad', 'Okay', 'Good', 'Excellent'];
+                                  return (
+                                    <p key={index} className="text-sm" style={{ color: entry.color }}>
+                                      Mood: {moodLabels[Math.round(entry.value) - 1]} ({entry.value}/5)
+                                    </p>
+                                  );
+                                }
+                                return null;
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="mood"
+                      stroke="#f59e0b"
+                      fill="#f59e0b"
+                      fillOpacity={0.3}
+                      connectNulls={true}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -19,12 +19,15 @@ import {
   Sun,
   Volume2,
   Mail,
-  Smartphone
+  Smartphone,
+  FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/firebase";
 import { doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
@@ -81,37 +84,179 @@ const SettingsPage = () => {
   const handleSaveSettings = async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
+    
+    // Save settings to Firebase
     await setDoc(doc(db, "users", currentUser.uid), { settings }, { merge: true });
-    toast({
-      title: "Settings Saved",
-      description: "Your preferences have been updated successfully."
-    });
+    
+    // Request push notification permission if enabled
+    if (settings.notifications.push && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          toast({
+            title: "Push Notifications Enabled",
+            description: "You'll now receive browser notifications for important updates."
+          });
+          // Show a test notification
+          new Notification('Serenity Notifications Enabled', {
+            body: 'You will now receive wellness reminders and updates.',
+            icon: '/favicon.ico'
+          });
+        } else {
+          updateSettings('notifications', 'push', false);
+          toast({
+            title: "Permission Denied",
+            description: "Push notifications require browser permission.",
+            variant: "destructive"
+          });
+        }
+      } else if (Notification.permission === 'granted') {
+        toast({
+          title: "Settings Saved",
+          description: "Your notification preferences have been updated."
+        });
+      }
+    } else {
+      toast({
+        title: "Settings Saved",
+        description: "Your preferences have been updated successfully."
+      });
+    }
   };
 
   const handleExportData = async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
-    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-    const assessmentsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "assessments"));
-    const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
-    const exportData = {
-      user: userDoc.exists() ? userDoc.data() : null,
-      assessments,
-      settings,
-      exportDate: new Date().toISOString()
-    };
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `serenity-data-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast({
-      title: "Data Exported",
-      description: "Your data has been downloaded successfully."
-    });
+    
+    try {
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      const userData = userDoc.exists() ? userDoc.data() : null;
+      const assessmentsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "assessments"));
+      const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
+      
+      // Create PDF
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // Title
+      pdf.setFontSize(22);
+      pdf.setTextColor(139, 92, 246); // Primary color
+      pdf.text('Serenity Wellness Report', pageWidth / 2, 20, { align: 'center' });
+      
+      // Subtitle
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth / 2, 28, { align: 'center' });
+      
+      // User Information
+      pdf.setFontSize(16);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('User Profile', 14, 45);
+      
+      pdf.setFontSize(10);
+      pdf.setTextColor(60, 60, 60);
+      let yPos = 55;
+      pdf.text(`Name: ${userData?.name || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      pdf.text(`Email: ${userData?.email || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      pdf.text(`Member Since: ${userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'N/A'}`, 14, yPos);
+      yPos += 7;
+      pdf.text(`Wellness Score: ${userData?.wellness_score || 0}%`, 14, yPos);
+      yPos += 7;
+      pdf.text(`Current Streak: ${userData?.streak || 0} days`, 14, yPos);
+      yPos += 15;
+      
+      // Assessments Section
+      if (assessments.length > 0) {
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Assessment History', 14, yPos);
+        yPos += 10;
+        
+        const assessmentData = assessments.map((a, index) => [
+          (index + 1).toString(),
+          a.type?.toUpperCase() || 'Assessment',
+          a.score?.toString() || 'N/A',
+          a.interpretation || 'N/A',
+          a.date ? new Date(a.date).toLocaleDateString() : 'N/A'
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [['#', 'Type', 'Score', 'Interpretation', 'Date']],
+          body: assessmentData,
+          theme: 'striped',
+          headStyles: { fillColor: [139, 92, 246] },
+          margin: { left: 14, right: 14 },
+          styles: { fontSize: 9 }
+        });
+        
+        yPos = (pdf as any).lastAutoTable.finalY + 15;
+      }
+      
+      // Mood History
+      if (userData?.moods && userData.moods.length > 0) {
+        if (yPos > pageHeight - 60) {
+          pdf.addPage();
+          yPos = 20;
+        }
+        
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Recent Mood Entries', 14, yPos);
+        yPos += 10;
+        
+        const recentMoods = userData.moods.slice(-10);
+        const moodData = recentMoods.map((m: any, index: number) => [
+          (index + 1).toString(),
+          m.date || 'N/A',
+          m.mood?.toString() || 'N/A',
+          m.emoji || '',
+          m.note?.substring(0, 50) || 'No note'
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPos,
+          head: [['#', 'Date', 'Mood', 'Emoji', 'Note']],
+          body: moodData,
+          theme: 'striped',
+          headStyles: { fillColor: [139, 92, 246] },
+          margin: { left: 14, right: 14 },
+          styles: { fontSize: 9 }
+        });
+      }
+      
+      // Footer on last page
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text(
+          `Page ${i} of ${totalPages} | Serenity Mental Wellness Platform`,
+          pageWidth / 2,
+          pageHeight - 10,
+          { align: 'center' }
+        );
+      }
+      
+      // Save PDF
+      pdf.save(`serenity-wellness-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "Data Exported",
+        description: "Your wellness report has been downloaded as PDF."
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting your data.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -408,12 +553,15 @@ const SettingsPage = () => {
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-medium">Export Your Data</h3>
-                        <p className="text-sm text-muted-foreground">Download all your assessment data and progress</p>
+                        <h3 className="font-medium flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-primary" />
+                          Export Your Data as PDF
+                        </h3>
+                        <p className="text-sm text-muted-foreground">Download a comprehensive wellness report with all your data</p>
                       </div>
-                      <Button onClick={handleExportData} variant="outline" className="flex items-center gap-2">
+                      <Button onClick={handleExportData} variant="outline" className="flex items-center gap-2 bg-gradient-primary text-white hover:opacity-90">
                         <Download className="w-4 h-4" />
-                        Export
+                        Export PDF
                       </Button>
                     </div>
                   </div>
