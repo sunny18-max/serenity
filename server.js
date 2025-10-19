@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://serenity-phi-plum.vercel.app/'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }));
@@ -415,6 +415,7 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -429,3 +430,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/api/health`);
 });
+=======
+const PORT = 3001;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+>>>>>>> 4695dcb95b8e1ac2ca0e01b21b4f4ff449cad8ed
