@@ -23,7 +23,8 @@ import {
   FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { auth, db } from "@/firebase";
 import { doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
 import jsPDF from 'jspdf';
@@ -285,8 +286,8 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-6 py-8 max-w-4xl">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-4xl">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button
@@ -588,6 +589,7 @@ const SettingsPage = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };

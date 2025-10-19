@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { notifyAssessmentCompleted } from "@/lib/notifications";
 import { auth, db } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 type AssessmentType = "select" | "phq9" | "gad7" | "stress" | "wellness" | "sleep" | "pcl5";
 
@@ -181,7 +182,7 @@ const AssessmentCenter = () => {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid p-6">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid p-4 sm:p-6 pb-20 lg:pb-6">
         <div className="container mx-auto py-8">
           {currentAssessment === "phq9" && <PHQ9Assessment {...props} />}
           {currentAssessment === "gad7" && <GAD7Assessment {...props} />}
@@ -195,8 +196,8 @@ const AssessmentCenter = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
-      <div className="container mx-auto px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="flex items-center justify-between mb-8">
           <Button 
             variant="ghost" 
@@ -321,6 +322,7 @@ const AssessmentCenter = () => {
           </Card>
         </div>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };

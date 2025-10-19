@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 interface Notification {
   id: number;
@@ -524,60 +525,6 @@ const Dashboard = () => {
     ? assessmentHistory.slice(-3).reverse()
     : [];
 
-  // Mobile Bottom Navigation Component
-  const BottomNav = () => {
-    const navigate = useNavigate();
-    const mobileMenuItems = [
-      { icon: Home, label: "Home", path: "/dashboard" },
-      { icon: BarChart3, label: "Assess", path: "/assessment-center" },
-      { icon: LineChart, label: "Progress", path: "/progress" },
-      { icon: Users, label: "Community", path: "/community" },
-      { icon: User, label: "Profile", path: "/settings" },
-    ];
-
-    return (
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-primary/20 shadow-2xl">
-        <div className="grid grid-cols-5 gap-1 px-2 py-2 safe-bottom">
-          {mobileMenuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  "flex flex-col items-center justify-center py-2 px-1 rounded-xl transition-all duration-200",
-                  isActive 
-                    ? "bg-primary/15 text-primary" 
-                    : "text-muted-foreground hover:text-primary hover:bg-primary/5"
-                )}
-              >
-                <Icon className={cn(
-                  "w-5 h-5 mb-1 transition-transform",
-                  isActive && "scale-110"
-                )} />
-                <span className={cn(
-                  "text-xs font-medium",
-                  isActive && "font-semibold"
-                )}>
-                  {item.label}
-                </span>
-                {isActive && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid flex pb-16 lg:pb-0">
       {/* Sidebar */}
@@ -970,7 +917,7 @@ const Dashboard = () => {
       <VoiceAssistant />
       
       {/* Mobile Bottom Navigation */}
-      <BottomNav />
+      <MobileBottomNav />
     </div>
   );
 };

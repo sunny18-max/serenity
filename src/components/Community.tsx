@@ -33,7 +33,8 @@ import { cn } from "@/lib/utils";
 import { fetchMentalWellnessNews, formatNewsDate, type NewsArticle } from "@/lib/newsService";
 import { getMentalWellnessVideos, getLiveStreams, getMentalHealthDiscussions, formatTimestamp, type VideoContent, type Discussion } from "@/lib/contentService";
 import SpotifyPlayer from "@/components/SpotifyPlayer";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 interface SupportGroup {
   id: string;
@@ -228,8 +229,8 @@ const Community = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
-      <div className="container mx-auto px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Title Section */}
         <motion.div 
           className="text-center mb-12"
@@ -770,6 +771,7 @@ const Community = () => {
           </div>
         )}
       </div>
+      <MobileBottomNav />
     </div>
   );
 };
