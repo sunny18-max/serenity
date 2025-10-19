@@ -116,6 +116,14 @@ const LandingPage = () => {
             </div>
 
             <div className="flex items-center space-x-4" data-aos="fade-left">
+              {/* Desktop Buttons */}
+              <Button variant="ghost" className="hidden md:flex hover:bg-primary/10 neon-border" onClick={() => window.location.href = '/auth'}>
+                Sign In
+              </Button>
+              <Button variant="hero" className="hidden md:flex cyber-button shadow-medium" onClick={() => window.location.href = '/auth'}>
+                Get Started
+              </Button>
+              
               {/* Mobile Menu Toggle */}
               <button
                 className="md:hidden p-2 text-foreground hover:text-primary transition-colors"
