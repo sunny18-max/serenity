@@ -57,12 +57,13 @@ const Progress = () => {
   };
 
   const generatePDFReport = () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Title
-    doc.setFontSize(22);
+      // Title
+      doc.setFontSize(22);
     doc.setTextColor(99, 102, 241);
     doc.text('Progress Report', pageWidth / 2, 20, { align: 'center' });
 
@@ -137,7 +138,11 @@ const Progress = () => {
       );
     }
 
-    doc.save(`serenity-progress-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      doc.save(`serenity-progress-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      alert('Unable to generate PDF on mobile. Please use a desktop browser for PDF export.');
+    }
   };
 
   const handleShare = () => {
