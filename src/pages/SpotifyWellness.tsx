@@ -151,39 +151,61 @@ const SpotifyWellness = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black pb-16 lg:pb-0">
       {/* Spotify-themed gradient background */}
       <div className="fixed inset-0 bg-gradient-to-br from-black via-gray-900 to-green-950 opacity-90" />
       
-      <div className={`relative z-10 container mx-auto px-6 py-8 ${isPlayerActive ? 'pb-40' : ''}`}>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/dashboard")}
-            className="text-white hover:text-green-400 hover:bg-green-950/50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <div className="flex items-center gap-2">
-            <Music className="w-8 h-8 text-green-500" />
-            <span className="text-2xl font-bold text-white">Powered by Spotify</span>
+      <div className={`relative z-10 container mx-auto px-4 sm:px-6 py-4 sm:py-8 ${isPlayerActive ? 'pb-40 lg:pb-40' : ''}`}>
+        {/* Header - Mobile Optimized */}
+        <div className="mb-6 sm:mb-8">
+          {/* Mobile Header */}
+          <div className="lg:hidden">
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/dashboard")}
+                className="text-white hover:text-green-400 hover:bg-green-950/50"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-1.5">
+                <Music className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-bold text-white">Spotify</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:flex items-center justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/dashboard")}
+              className="text-white hover:text-green-400 hover:bg-green-950/50"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center gap-2">
+              <Music className="w-8 h-8 text-green-500" />
+              <span className="text-2xl font-bold text-white">Powered by Spotify</span>
+            </div>
           </div>
         </div>
 
         {/* Title Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-5xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
             Mental Wellness Music
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto px-4">
             Curated playlists designed to support your mental health journey
           </p>
         </div>
 
         {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-12">
+        <div className="max-w-2xl mx-auto mb-8 sm:mb-12">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />

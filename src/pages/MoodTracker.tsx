@@ -252,33 +252,59 @@ const MoodTracker = () => {
     : "0";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
-                  <Heart className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
+        {/* Header - Mobile Optimized */}
+        <div className="mb-6 sm:mb-8">
+          {/* Mobile Header */}
+          <div className="lg:hidden">
+            <div className="flex items-center gap-3 mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                  <Heart className="w-4 h-4 text-white" />
                 </div>
-                Mood Tracker
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Track your emotions and discover patterns with AI insights
-              </p>
+                <div>
+                  <h1 className="text-lg font-bold">Mood Tracker</h1>
+                  <p className="text-xs text-muted-foreground">Track your emotions</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                    <Heart className="w-6 h-6 text-white" />
+                  </div>
+                  Mood Tracker
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Track your emotions and discover patterns with AI insights
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Tracking Section */}
           <div className="lg:col-span-2 space-y-6">
             {/* Log Mood */}
@@ -294,7 +320,7 @@ const MoodTracker = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Mood Selection */}
-                <div className="grid grid-cols-5 gap-3">
+                <div className="grid grid-cols-5 gap-2 sm:gap-3">
                   {moodOptions.map(option => {
                     const Icon = option.icon;
                     return (

@@ -226,10 +226,10 @@ const WellnessGames = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-background to-blue-50 dark:from-gray-900 dark:via-background dark:to-gray-800">
-      <div className="container mx-auto px-6 py-8 max-w-5xl">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-background to-blue-50 dark:from-gray-900 dark:via-background dark:to-gray-800 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <Button variant="ghost" onClick={() => navigate("/dashboard")} className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -287,7 +287,7 @@ const WellnessGames = () => {
           <CardContent className="space-y-6">
             {/* Duration Selection */}
             {!isActive && (
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {durations.map((dur) => {
                   const Icon = dur.icon;
                   return (
