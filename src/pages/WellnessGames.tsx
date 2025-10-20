@@ -1,711 +1,381 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import {
-  ArrowLeft,
-  Brain,
-  Heart,
-  Smile,
-  Sparkles,
-  Target,
-  Zap,
-  Cloud,
-  Sun,
-  Moon,
-  Star,
-  Flower2,
-  TreePine,
-  Award,
-  TrendingUp,
-  RefreshCw,
-  Play,
-  Check,
-  X,
-  Shuffle,
-  Timer,
-  Trophy,
-  Lightbulb,
-  MessageCircle,
-  Music,
-  Palette,
-  Book,
-  Coffee,
+  ArrowLeft, Play, Pause, RotateCcw, TreePine, Sparkles, Award, Target, Clock,
+  Leaf, Flower2, Trees, Brain, Heart, Zap, Trophy, Star, Smile, Cloud, Home
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 
+type GameType = "menu" | "forest" | "memory" | "breathing" | "gratitude" | "whack";
+
 interface GameStats {
-  focusMinutes: number;
-  gratitudeEntries: number;
-  breathingExercises: number;
-  thoughtChallenges: number;
-  moodBoosts: number;
+  forestMinutes: number;
+  treesPlanted: number;
+  memoryHighScore: number;
+  breathingSessions: number;
+  gratitudeCount: number;
+  whackScore: number;
   totalPoints: number;
 }
 
 const WellnessGames = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [currentGame, setCurrentGame] = useState<GameType>("menu");
   const [stats, setStats] = useState<GameStats>({
-    focusMinutes: 0,
-    gratitudeEntries: 0,
-    breathingExercises: 0,
-    thoughtChallenges: 0,
-    moodBoosts: 0,
-    totalPoints: 0,
+    forestMinutes: 0, treesPlanted: 0, memoryHighScore: 0,
+    breathingSessions: 0, gratitudeCount: 0, whackScore: 0, totalPoints: 0
   });
 
-  // Gratitude Game State
-  const [gratitudeItems, setGratitudeItems] = useState<string[]>([]);
-  const [currentGratitude, setCurrentGratitude] = useState("");
+  // Forest Game
+  const [forestDuration, setForestDuration] = useState(25);
+  const [forestTime, setForestTime] = useState(25 * 60);
+  const [forestActive, setForestActive] = useState(false);
+  const [treeStage, setTreeStage] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Breathing Game State
-  const [breathingPhase, setBreathingPhase] = useState<"inhale" | "hold" | "exhale" | "rest">("inhale");
-  const [breathingActive, setBreathingActive] = useState(false);
+  // Memory Game
+  const [memoryCards, setMemoryCards] = useState<Array<{id: number; emoji: string; flipped: boolean; matched: boolean}>>([]);
+  const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
+  const [memoryMoves, setMemoryMoves] = useState(0);
+
+  // Breathing Game
+  const [breathPhase, setBreathPhase] = useState<"in"|"hold"|"out"|"rest">("in");
+  const [breathActive, setBreathActive] = useState(false);
   const [breathCount, setBreathCount] = useState(0);
 
-  // Thought Challenge State
-  const [negativeThought, setNegativeThought] = useState("");
-  const [positiveReframe, setPositiveReframe] = useState("");
-  const [thoughtHistory, setThoughtHistory] = useState<Array<{ negative: string; positive: string }>>([]);
+  // Gratitude Game
+  const [gratitudeList, setGratitudeList] = useState<string[]>([]);
+  const [gratitudeInput, setGratitudeInput] = useState("");
 
-  // Mood Boost State
-  const [selectedMoodBoost, setSelectedMoodBoost] = useState<string | null>(null);
+  // Whack-a-Stress
+  const [whackMoles, setWhackMoles] = useState<boolean[]>(Array(9).fill(false));
+  const [whackScore, setWhackScore] = useState(0);
+  const [whackActive, setWhackActive] = useState(false);
+  const [whackTime, setWhackTime] = useState(30);
 
-  // Memory Match State
-  const [memoryCards, setMemoryCards] = useState<Array<{ id: number; emoji: string; flipped: boolean; matched: boolean }>>([]);
-  const [flippedCards, setFlippedCards] = useState<number[]>([]);
-  const [memoryMoves, setMemoryMoves] = useState(0);
-  const [memoryMatches, setMemoryMatches] = useState(0);
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const moodBoostActivities = [
-    { id: 1, icon: Music, title: "Listen to Music", description: "5 min mood boost", color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950" },
-    { id: 2, icon: Coffee, title: "Mindful Tea/Coffee", description: "Savor the moment", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
-    { id: 3, icon: Book, title: "Read Something", description: "Escape for 10 min", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950" },
-    { id: 4, icon: Sun, title: "Get Sunlight", description: "Vitamin D boost", color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950" },
-    { id: 5, icon: Palette, title: "Doodle/Color", description: "Express creativity", color: "text-pink-500", bg: "bg-pink-50 dark:bg-pink-950" },
-    { id: 6, icon: MessageCircle, title: "Text a Friend", description: "Social connection", color: "text-green-500", bg: "bg-green-50 dark:bg-green-950" },
+  const games = [
+    { id: "forest", title: "Focus Forest 🌳", desc: "Grow trees by staying focused", icon: TreePine, color: "from-green-400 to-emerald-600", points: stats.forestMinutes },
+    { id: "memory", title: "Memory Match 🎴", desc: "Match pairs & boost memory", icon: Brain, color: "from-purple-400 to-pink-600", points: stats.memoryHighScore },
+    { id: "breathing", title: "Calm Bubbles 🫧", desc: "Breathe with floating bubbles", icon: Cloud, color: "from-blue-400 to-cyan-600", points: stats.breathingSessions },
+    { id: "gratitude", title: "Gratitude Garden 🌸", desc: "Plant flowers of gratitude", icon: Flower2, color: "from-pink-400 to-rose-600", points: stats.gratitudeCount },
+    { id: "whack", title: "Whack-a-Stress 🎯", desc: "Smash away your worries!", icon: Zap, color: "from-orange-400 to-red-600", points: stats.whackScore }
   ];
 
   useEffect(() => {
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    if (forestActive) {
+      timerRef.current = setInterval(() => {
+        setForestTime(prev => {
+          if (prev <= 1) {
+            completeForest();
+            return 0;
+          }
+          const progress = ((forestDuration * 60 - prev) / (forestDuration * 60)) * 100;
+          setTreeStage(Math.min(5, Math.floor(progress / 20)));
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [forestActive]);
+
   const fetchStats = async () => {
     const user = auth.currentUser;
     if (!user) return;
-
     try {
-      const statsDoc = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
-      if (statsDoc.exists()) {
-        setStats(statsDoc.data() as GameStats);
-      }
-    } catch (error) {
-      console.error("Error fetching game stats:", error);
-    }
+      const doc = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
+      if (doc.exists()) setStats(doc.data() as GameStats);
+    } catch (e) { console.error(e); }
   };
 
   const updateStats = async (updates: Partial<GameStats>) => {
     const user = auth.currentUser;
     if (!user) return;
-
     try {
-      const statsRef = doc(db, "users", user.uid, "wellness", "games");
-      await setDoc(statsRef, { ...stats, ...updates }, { merge: true });
+      await setDoc(doc(db, "users", user.uid, "wellness", "games"), { ...stats, ...updates }, { merge: true });
       setStats(prev => ({ ...prev, ...updates }));
-    } catch (error) {
-      console.error("Error updating stats:", error);
-    }
+    } catch (e) { console.error(e); }
   };
 
-  // Gratitude Game Functions
-  const addGratitudeItem = () => {
-    if (currentGratitude.trim()) {
-      setGratitudeItems([...gratitudeItems, currentGratitude]);
-      setCurrentGratitude("");
-      updateStats({
-        gratitudeEntries: stats.gratitudeEntries + 1,
-        totalPoints: stats.totalPoints + 10,
-      });
-      toast({
-        title: "Gratitude Added! 🌟",
-        description: "+10 wellness points",
-      });
-    }
+  const completeForest = () => {
+    setForestActive(false);
+    const mins = forestDuration;
+    updateStats({
+      forestMinutes: stats.forestMinutes + mins,
+      treesPlanted: stats.treesPlanted + 1,
+      totalPoints: stats.totalPoints + mins * 2
+    });
+    toast({ title: "🌳 Tree Planted!", description: `+${mins * 2} points!` });
   };
 
-  // Breathing Exercise Functions
-  const startBreathingExercise = () => {
-    setBreathingActive(true);
-    setBreathCount(0);
-    runBreathingCycle();
-  };
-
-  const runBreathingCycle = () => {
-    const phases = [
-      { phase: "inhale" as const, duration: 4000 },
-      { phase: "hold" as const, duration: 4000 },
-      { phase: "exhale" as const, duration: 4000 },
-      { phase: "rest" as const, duration: 2000 },
-    ];
-
-    let currentPhaseIndex = 0;
-    let cycleCount = 0;
-
-    const runPhase = () => {
-      if (cycleCount >= 5) {
-        setBreathingActive(false);
-        setBreathCount(5);
-        updateStats({
-          breathingExercises: stats.breathingExercises + 1,
-          totalPoints: stats.totalPoints + 20,
-        });
-        toast({
-          title: "Breathing Exercise Complete! 🌬️",
-          description: "+20 wellness points",
-        });
-        return;
-      }
-
-      const currentPhase = phases[currentPhaseIndex];
-      setBreathingPhase(currentPhase.phase);
-
-      setTimeout(() => {
-        currentPhaseIndex++;
-        if (currentPhaseIndex >= phases.length) {
-          currentPhaseIndex = 0;
-          cycleCount++;
-          setBreathCount(cycleCount);
-        }
-        if (cycleCount < 5) {
-          runPhase();
-        }
-      }, currentPhase.duration);
-    };
-
-    runPhase();
-  };
-
-  // Thought Challenge Functions
-  const submitThoughtChallenge = () => {
-    if (negativeThought.trim() && positiveReframe.trim()) {
-      setThoughtHistory([...thoughtHistory, { negative: negativeThought, positive: positiveReframe }]);
-      setNegativeThought("");
-      setPositiveReframe("");
-      updateStats({
-        thoughtChallenges: stats.thoughtChallenges + 1,
-        totalPoints: stats.totalPoints + 15,
-      });
-      toast({
-        title: "Thought Reframed! 💭",
-        description: "+15 wellness points",
-      });
-    }
-  };
-
-  // Mood Boost Functions
-  const completeMoodBoost = (activityId: number) => {
-    setSelectedMoodBoost(activityId.toString());
-    setTimeout(() => {
-      updateStats({
-        moodBoosts: stats.moodBoosts + 1,
-        totalPoints: stats.totalPoints + 5,
-      });
-      toast({
-        title: "Mood Boost Complete! 😊",
-        description: "+5 wellness points",
-      });
-      setSelectedMoodBoost(null);
-    }, 1000);
-  };
-
-  // Memory Match Game Functions
-  const initMemoryGame = () => {
-    const emojis = ["🌸", "🌺", "🌻", "🌷", "🌹", "🌼", "🍀", "🌿"];
-    const cards = [...emojis, ...emojis]
-      .sort(() => Math.random() - 0.5)
-      .map((emoji, index) => ({
-        id: index,
-        emoji,
-        flipped: false,
-        matched: false,
-      }));
+  const startMemory = () => {
+    const emojis = ["🎮","🎯","🎨","🎭","🎪","🎸","🎺","🎻"];
+    const cards = [...emojis, ...emojis].sort(() => Math.random() - 0.5)
+      .map((emoji, id) => ({ id, emoji, flipped: false, matched: false }));
     setMemoryCards(cards);
-    setFlippedCards([]);
     setMemoryMoves(0);
-    setMemoryMatches(0);
+    setFlippedIndices([]);
   };
 
-  const flipCard = (id: number) => {
-    if (flippedCards.length === 2 || memoryCards[id].matched || memoryCards[id].flipped) return;
-
+  const flipMemoryCard = (idx: number) => {
+    if (flippedIndices.length === 2 || memoryCards[idx].matched || memoryCards[idx].flipped) return;
     const newCards = [...memoryCards];
-    newCards[id].flipped = true;
+    newCards[idx].flipped = true;
     setMemoryCards(newCards);
-
-    const newFlipped = [...flippedCards, id];
-    setFlippedCards(newFlipped);
+    const newFlipped = [...flippedIndices, idx];
+    setFlippedIndices(newFlipped);
 
     if (newFlipped.length === 2) {
       setMemoryMoves(memoryMoves + 1);
-      const [first, second] = newFlipped;
-      
-      if (memoryCards[first].emoji === memoryCards[second].emoji) {
+      const [a, b] = newFlipped;
+      if (memoryCards[a].emoji === memoryCards[b].emoji) {
         setTimeout(() => {
-          const matchedCards = [...memoryCards];
-          matchedCards[first].matched = true;
-          matchedCards[second].matched = true;
-          setMemoryCards(matchedCards);
-          setFlippedCards([]);
-          setMemoryMatches(memoryMatches + 1);
-
-          if (memoryMatches + 1 === 8) {
-            updateStats({
-              totalPoints: stats.totalPoints + 25,
-            });
-            toast({
-              title: "Memory Game Complete! 🎉",
-              description: "+25 wellness points",
-            });
+          const matched = [...memoryCards];
+          matched[a].matched = matched[b].matched = true;
+          setMemoryCards(matched);
+          setFlippedIndices([]);
+          if (matched.filter(c => c.matched).length === 16) {
+            const score = Math.max(100 - memoryMoves * 5, 10);
+            updateStats({ memoryHighScore: Math.max(stats.memoryHighScore, score), totalPoints: stats.totalPoints + score });
+            toast({ title: "🎉 Perfect Match!", description: `+${score} points!` });
           }
         }, 500);
       } else {
         setTimeout(() => {
-          const resetCards = [...memoryCards];
-          resetCards[first].flipped = false;
-          resetCards[second].flipped = false;
-          setMemoryCards(resetCards);
-          setFlippedCards([]);
+          const reset = [...memoryCards];
+          reset[a].flipped = reset[b].flipped = false;
+          setMemoryCards(reset);
+          setFlippedIndices([]);
         }, 1000);
       }
     }
   };
 
-  const getBreathingMessage = () => {
-    switch (breathingPhase) {
-      case "inhale": return "Breathe In...";
-      case "hold": return "Hold...";
-      case "exhale": return "Breathe Out...";
-      case "rest": return "Rest...";
-    }
+  const startBreathing = () => {
+    setBreathActive(true);
+    setBreathCount(0);
+    const phases = [{p:"in",d:4000},{p:"hold",d:4000},{p:"out",d:4000},{p:"rest",d:2000}];
+    let idx = 0, cycles = 0;
+    const run = () => {
+      if (cycles >= 5) {
+        setBreathActive(false);
+        updateStats({ breathingSessions: stats.breathingSessions + 1, totalPoints: stats.totalPoints + 20 });
+        toast({ title: "🫧 Breathing Complete!", description: "+20 points!" });
+        return;
+      }
+      setBreathPhase(phases[idx].p as any);
+      setTimeout(() => {
+        idx++;
+        if (idx >= 4) { idx = 0; cycles++; setBreathCount(cycles); }
+        if (cycles < 5) run();
+      }, phases[idx].d);
+    };
+    run();
   };
 
-  const getBreathingColor = () => {
-    switch (breathingPhase) {
-      case "inhale": return "bg-blue-500";
-      case "hold": return "bg-purple-500";
-      case "exhale": return "bg-green-500";
-      case "rest": return "bg-gray-400";
-    }
+  const addGratitude = () => {
+    if (!gratitudeInput.trim()) return;
+    setGratitudeList([...gratitudeList, gratitudeInput]);
+    setGratitudeInput("");
+    updateStats({ gratitudeCount: stats.gratitudeCount + 1, totalPoints: stats.totalPoints + 10 });
+    toast({ title: "🌸 Flower Planted!", description: "+10 points!" });
   };
+
+  const startWhack = () => {
+    setWhackActive(true);
+    setWhackScore(0);
+    setWhackTime(30);
+    const interval = setInterval(() => {
+      setWhackTime(t => {
+        if (t <= 1) {
+          clearInterval(interval);
+          setWhackActive(false);
+          updateStats({ whackScore: Math.max(stats.whackScore, whackScore), totalPoints: stats.totalPoints + whackScore });
+          toast({ title: "🎯 Game Over!", description: `Score: ${whackScore}` });
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+
+    const moleInterval = setInterval(() => {
+      if (!whackActive) { clearInterval(moleInterval); return; }
+      const idx = Math.floor(Math.random() * 9);
+      setWhackMoles(m => { const n = [...m]; n[idx] = true; return n; });
+      setTimeout(() => setWhackMoles(m => { const n = [...m]; n[idx] = false; return n; }), 800);
+    }, 1200);
+  };
+
+  const whackMole = (idx: number) => {
+    if (!whackMoles[idx]) return;
+    setWhackScore(s => s + 10);
+    setWhackMoles(m => { const n = [...m]; n[idx] = false; return n; });
+  };
+
+  if (currentGame === "menu") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-purple-950 dark:to-gray-900 pb-16 lg:pb-0">
+        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-6xl">
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="ghost" onClick={() => navigate("/dashboard")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
+            <Badge className="text-lg px-4 py-2"><Trophy className="w-5 h-5 mr-2" />{stats.totalPoints} Points</Badge>
+          </div>
+
+          <motion.div initial={{y:-20,opacity:0}} animate={{y:0,opacity:1}} className="text-center mb-8">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent">
+              🎮 Wellness Arcade
+            </h1>
+            <p className="text-lg text-muted-foreground">Choose your game & boost your mental health!</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {games.map((game, i) => {
+              const Icon = game.icon;
+              return (
+                <motion.div key={game.id} initial={{scale:0,rotate:-10}} animate={{scale:1,rotate:0}} transition={{delay:i*0.1}}>
+                  <Card className="cursor-pointer hover:scale-105 transition-all hover:shadow-2xl border-2 hover:border-primary"
+                    onClick={() => { setCurrentGame(game.id as GameType); if(game.id==="memory")startMemory(); }}>
+                    <CardHeader className={`bg-gradient-to-br ${game.color} text-white rounded-t-lg`}>
+                      <div className="flex items-center justify-between">
+                        <Icon className="w-12 h-12" />
+                        <Badge variant="secondary" className="text-lg">{game.points}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <CardTitle className="text-xl mb-2">{game.title}</CardTitle>
+                      <CardDescription className="text-base">{game.desc}</CardDescription>
+                      <Button className="w-full mt-4" size="lg"><Play className="w-4 h-4 mr-2" />Play Now</Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+        <MobileBottomNav />
+      </div>
+    );
+  }
+
+  // Individual game screens would go here - I'll create a compact version
+  const GameHeader = ({title, onBack}: {title: string; onBack: () => void}) => (
+    <div className="flex items-center justify-between mb-6">
+      <Button variant="ghost" onClick={onBack}><Home className="w-4 h-4 mr-2" />Menu</Button>
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <Badge className="text-lg"><Trophy className="w-4 h-4 mr-1" />{stats.totalPoints}</Badge>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </Button>
-            <Badge variant="secondary" className="text-sm">
-              <Trophy className="w-4 h-4 mr-1" />
-              {stats.totalPoints} Points
-            </Badge>
-          </div>
-
-          <div className="text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Wellness Games
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Fun activities to boost your mental health
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Heart className="w-6 h-6 mx-auto mb-1 text-red-500" />
-              <p className="text-xl font-bold">{stats.gratitudeEntries}</p>
-              <p className="text-xs text-muted-foreground">Gratitude</p>
-            </CardContent>
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-4xl">
+        <GameHeader title={games.find(g=>g.id===currentGame)?.title || ""} onBack={() => setCurrentGame("menu")} />
+        
+        {currentGame === "forest" && (
+          <Card className="p-6">
+            <div className="text-center space-y-6">
+              <div className="text-9xl">{["🌱","🌿","🪴","🌳","🌲","🌴"][treeStage]}</div>
+              <div className="text-6xl font-mono font-bold">{Math.floor(forestTime/60)}:{(forestTime%60).toString().padStart(2,'0')}</div>
+              <Progress value={((forestDuration*60-forestTime)/(forestDuration*60))*100} className="h-4" />
+              <div className="flex gap-3 justify-center flex-wrap">
+                {[15,25,45,60].map(d => (
+                  <Button key={d} variant={forestDuration===d?"default":"outline"} onClick={()=>{setForestDuration(d);setForestTime(d*60);}}>{d}min</Button>
+                ))}
+              </div>
+              <Button size="lg" onClick={()=>setForestActive(!forestActive)} className="w-full">
+                {forestActive?<Pause className="w-5 h-5 mr-2"/>:<Play className="w-5 h-5 mr-2"/>}
+                {forestActive?"Pause":"Start Focus"}
+              </Button>
+            </div>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Cloud className="w-6 h-6 mx-auto mb-1 text-blue-500" />
-              <p className="text-xl font-bold">{stats.breathingExercises}</p>
-              <p className="text-xs text-muted-foreground">Breathing</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Brain className="w-6 h-6 mx-auto mb-1 text-purple-500" />
-              <p className="text-xl font-bold">{stats.thoughtChallenges}</p>
-              <p className="text-xs text-muted-foreground">Thoughts</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Smile className="w-6 h-6 mx-auto mb-1 text-yellow-500" />
-              <p className="text-xl font-bold">{stats.moodBoosts}</p>
-              <p className="text-xs text-muted-foreground">Mood Boosts</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Sparkles className="w-6 h-6 mx-auto mb-1 text-orange-500" />
-              <p className="text-xl font-bold">{stats.totalPoints}</p>
-              <p className="text-xs text-muted-foreground">Total Points</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-6 h-6 mx-auto mb-1 text-green-500" />
-              <p className="text-xl font-bold">
-                {stats.gratitudeEntries + stats.breathingExercises + stats.thoughtChallenges + stats.moodBoosts}
-              </p>
-              <p className="text-xs text-muted-foreground">Activities</p>
-            </CardContent>
-          </Card>
-        </div>
+        )}
 
-        {/* Games Tabs */}
-        <Tabs defaultValue="gratitude" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 mb-6">
-            <TabsTrigger value="gratitude">Gratitude</TabsTrigger>
-            <TabsTrigger value="breathing">Breathing</TabsTrigger>
-            <TabsTrigger value="thoughts">Thoughts</TabsTrigger>
-            <TabsTrigger value="mood">Mood Boost</TabsTrigger>
-            <TabsTrigger value="memory">Memory</TabsTrigger>
-          </TabsList>
+        {currentGame === "memory" && (
+          <Card className="p-6">
+            <div className="mb-4 flex justify-between"><span>Moves: {memoryMoves}</span><Button onClick={startMemory} size="sm"><RotateCcw className="w-4 h-4" /></Button></div>
+            <div className="grid grid-cols-4 gap-3">
+              {memoryCards.map((card,i) => (
+                <motion.div key={i} whileTap={{scale:0.9}} onClick={()=>flipMemoryCard(i)}
+                  className={cn("aspect-square rounded-xl flex items-center justify-center text-4xl cursor-pointer transition-all",
+                    card.flipped||card.matched?"bg-white dark:bg-gray-800 border-4 border-primary":"bg-gradient-to-br from-purple-400 to-pink-400")}>
+                  {card.flipped||card.matched?card.emoji:"?"}
+                </motion.div>
+              ))}
+            </div>
+          </Card>
+        )}
 
-          {/* Gratitude Game */}
-          <TabsContent value="gratitude">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-red-500" />
-                  Gratitude Journal
-                </CardTitle>
-                <CardDescription>
-                  Write down 3 things you're grateful for today
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={currentGratitude}
-                    onChange={(e) => setCurrentGratitude(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addGratitudeItem()}
-                    placeholder="I'm grateful for..."
-                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <Button onClick={addGratitudeItem} disabled={!currentGratitude.trim()}>
-                    <Check className="w-4 h-4" />
-                  </Button>
-                </div>
+        {currentGame === "breathing" && (
+          <Card className="p-6">
+            <div className="text-center space-y-6">
+              <motion.div animate={{scale:breathPhase==="in"?1.5:breathPhase==="out"?0.7:1}} transition={{duration:breathPhase==="rest"?2:4}}
+                className={cn("w-64 h-64 mx-auto rounded-full flex items-center justify-center text-white text-3xl font-bold",
+                  breathPhase==="in"?"bg-blue-500":breathPhase==="hold"?"bg-purple-500":breathPhase==="out"?"bg-green-500":"bg-gray-400")}>
+                {breathPhase==="in"?"Breathe In":breathPhase==="hold"?"Hold":breathPhase==="out"?"Breathe Out":"Rest"}
+              </motion.div>
+              <div className="flex gap-2 justify-center">{[...Array(5)].map((_,i)=><div key={i} className={cn("w-4 h-4 rounded-full",i<breathCount?"bg-blue-500":"bg-gray-300")}/>)}</div>
+              <Button size="lg" onClick={startBreathing} disabled={breathActive} className="w-full"><Play className="w-5 h-5 mr-2" />Start Breathing</Button>
+            </div>
+          </Card>
+        )}
 
-                <div className="space-y-2">
-                  <AnimatePresence>
-                    {gratitudeItems.map((item, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg"
-                      >
-                        <Star className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm flex-1">{item}</p>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
+        {currentGame === "gratitude" && (
+          <Card className="p-6">
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <input value={gratitudeInput} onChange={e=>setGratitudeInput(e.target.value)} onKeyPress={e=>e.key==="Enter"&&addGratitude()}
+                  placeholder="I'm grateful for..." className="flex-1 px-4 py-3 border-2 rounded-lg text-lg" />
+                <Button onClick={addGratitude} size="lg"><Flower2 className="w-5 h-5" /></Button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <AnimatePresence>
+                  {gratitudeList.map((item,i) => (
+                    <motion.div key={i} initial={{scale:0,rotate:-20}} animate={{scale:1,rotate:0}} exit={{scale:0}}
+                      className="p-4 bg-gradient-to-br from-pink-100 to-rose-100 dark:from-pink-950 dark:to-rose-950 rounded-xl text-center">
+                      <div className="text-4xl mb-2">🌸</div>
+                      <p className="text-sm font-medium">{item}</p>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          </Card>
+        )}
 
-                {gratitudeItems.length >= 3 && (
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <Sparkles className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                    <p className="font-semibold text-green-700 dark:text-green-400">
-                      Amazing! You've completed your gratitude practice! 🌟
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Breathing Exercise */}
-          <TabsContent value="breathing">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Cloud className="w-5 h-5 text-blue-500" />
-                  Box Breathing
-                </CardTitle>
-                <CardDescription>
-                  4-4-4-4 breathing technique for calm and focus
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="text-center">
-                  <motion.div
-                    className={cn(
-                      "w-48 h-48 mx-auto rounded-full flex items-center justify-center transition-colors duration-1000",
-                      getBreathingColor()
-                    )}
-                    animate={breathingActive ? {
-                      scale: breathingPhase === "inhale" ? 1.2 : breathingPhase === "exhale" ? 0.8 : 1
-                    } : {}}
-                    transition={{ duration: breathingPhase === "rest" ? 2 : 4 }}
-                  >
-                    <div className="text-white text-center">
-                      <p className="text-2xl font-bold mb-2">{getBreathingMessage()}</p>
-                      <p className="text-sm">Cycle {breathCount}/5</p>
-                    </div>
+        {currentGame === "whack" && (
+          <Card className="p-6">
+            <div className="space-y-6">
+              <div className="flex justify-between text-xl font-bold">
+                <span>Score: {whackScore}</span>
+                <span>Time: {whackTime}s</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {whackMoles.map((active,i) => (
+                  <motion.div key={i} whileTap={{scale:0.8}} onClick={()=>whackMole(i)}
+                    className={cn("aspect-square rounded-2xl flex items-center justify-center text-6xl cursor-pointer transition-all",
+                      active?"bg-gradient-to-br from-red-400 to-orange-400":"bg-gray-200 dark:bg-gray-800")}>
+                    {active?"😰":"💤"}
                   </motion.div>
-                </div>
-
-                <div className="text-center space-y-4">
-                  {!breathingActive ? (
-                    <Button onClick={startBreathingExercise} size="lg" className="w-full sm:w-auto">
-                      <Play className="w-4 h-4 mr-2" />
-                      Start Breathing Exercise
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Follow the circle's movement with your breath
-                      </p>
-                      <div className="flex justify-center gap-2">
-                        {[...Array(5)].map((_, i) => (
-                          <div
-                            key={i}
-                            className={cn(
-                              "w-3 h-3 rounded-full",
-                              i < breathCount ? "bg-blue-500" : "bg-gray-300"
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2 text-blue-700 dark:text-blue-400">Benefits:</h4>
-                  <ul className="text-sm space-y-1 text-blue-600 dark:text-blue-300">
-                    <li>• Reduces stress and anxiety</li>
-                    <li>• Improves focus and concentration</li>
-                    <li>• Lowers blood pressure</li>
-                    <li>• Promotes relaxation</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Thought Challenge */}
-          <TabsContent value="thoughts">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-purple-500" />
-                  Thought Challenger
-                </CardTitle>
-                <CardDescription>
-                  Reframe negative thoughts using CBT techniques
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Negative Thought</label>
-                    <textarea
-                      value={negativeThought}
-                      onChange={(e) => setNegativeThought(e.target.value)}
-                      placeholder="Write down a negative or unhelpful thought..."
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Positive Reframe</label>
-                    <textarea
-                      value={positiveReframe}
-                      onChange={(e) => setPositiveReframe(e.target.value)}
-                      placeholder="How can you reframe this thought more positively or realistically?"
-                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={submitThoughtChallenge}
-                    disabled={!negativeThought.trim() || !positiveReframe.trim()}
-                    className="w-full"
-                  >
-                    <Lightbulb className="w-4 h-4 mr-2" />
-                    Submit Reframe
-                  </Button>
-                </div>
-
-                {thoughtHistory.length > 0 && (
-                  <div className="space-y-3 mt-6">
-                    <h4 className="font-semibold">Your Progress:</h4>
-                    {thoughtHistory.slice(-3).reverse().map((entry, index) => (
-                      <div key={index} className="p-4 border rounded-lg space-y-2">
-                        <div className="flex items-start gap-2">
-                          <X className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
-                          <p className="text-sm text-muted-foreground">{entry.negative}</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <Check className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />
-                          <p className="text-sm font-medium">{entry.positive}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Mood Boost Activities */}
-          <TabsContent value="mood">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Smile className="w-5 h-5 text-yellow-500" />
-                  Quick Mood Boosters
-                </CardTitle>
-                <CardDescription>
-                  5-minute activities to lift your spirits
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {moodBoostActivities.map((activity) => {
-                    const Icon = activity.icon;
-                    const isSelected = selectedMoodBoost === activity.id.toString();
-                    
-                    return (
-                      <motion.div
-                        key={activity.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Card
-                          className={cn(
-                            "cursor-pointer transition-all",
-                            isSelected && "ring-2 ring-primary",
-                            activity.bg
-                          )}
-                          onClick={() => completeMoodBoost(activity.id)}
-                        >
-                          <CardContent className="p-6 text-center">
-                            <Icon className={cn("w-12 h-12 mx-auto mb-3", activity.color)} />
-                            <h3 className="font-semibold mb-1">{activity.title}</h3>
-                            <p className="text-xs text-muted-foreground">{activity.description}</p>
-                            {isSelected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="mt-3"
-                              >
-                                <Check className="w-6 h-6 mx-auto text-green-500" />
-                              </motion.div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Memory Match Game */}
-          <TabsContent value="memory">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Flower2 className="w-5 h-5 text-pink-500" />
-                  Mindful Memory Match
-                </CardTitle>
-                <CardDescription>
-                  Match the flowers to improve focus and memory
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="text-sm">
-                    <span className="font-semibold">Moves:</span> {memoryMoves}
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-semibold">Matches:</span> {memoryMatches}/8
-                  </div>
-                  <Button onClick={initMemoryGame} variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    New Game
-                  </Button>
-                </div>
-
-                {memoryCards.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Button onClick={initMemoryGame} size="lg">
-                      <Play className="w-4 h-4 mr-2" />
-                      Start Game
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-4 gap-3">
-                    {memoryCards.map((card) => (
-                      <motion.div
-                        key={card.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => flipCard(card.id)}
-                        className={cn(
-                          "aspect-square rounded-lg flex items-center justify-center text-4xl cursor-pointer transition-all",
-                          card.flipped || card.matched
-                            ? "bg-white dark:bg-gray-800 border-2 border-primary"
-                            : "bg-primary/20 hover:bg-primary/30"
-                        )}
-                      >
-                        {card.flipped || card.matched ? card.emoji : "?"}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-
-                {memoryMatches === 8 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg"
-                  >
-                    <Trophy className="w-12 h-12 mx-auto mb-2 text-green-500" />
-                    <p className="font-semibold text-green-700 dark:text-green-400">
-                      Congratulations! You matched all pairs in {memoryMoves} moves! 🎉
-                    </p>
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                ))}
+              </div>
+              <Button size="lg" onClick={startWhack} disabled={whackActive} className="w-full"><Zap className="w-5 h-5 mr-2" />Start Game</Button>
+            </div>
+          </Card>
+        )}
       </div>
       <MobileBottomNav />
     </div>
