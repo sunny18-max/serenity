@@ -244,21 +244,22 @@ const Mindfulness = () => {
     setCurrentStep(0);
     setIsPlaying(true);
     
-    // Play ambient sound
-    if (!isMuted && audioRef.current) {
-      audioRef.current.play();
-    }
+    // Don't play ambient sound when video is present (video has its own audio)
+    // if (!isMuted && audioRef.current && !exercise.videoUrl) {
+    //   audioRef.current.play();
+    // }
   };
 
   const handlePauseResume = () => {
     setIsPlaying(!isPlaying);
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-    }
+    // Audio control disabled - videos have their own audio
+    // if (audioRef.current) {
+    //   if (isPlaying) {
+    //     audioRef.current.pause();
+    //   } else {
+    //     audioRef.current.play();
+    //   }
+    // }
   };
 
   const handleReset = () => {
@@ -268,17 +269,19 @@ const Mindfulness = () => {
       setProgress(0);
       setCurrentStep(0);
     }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    // Audio control disabled - videos have their own audio
+    // if (audioRef.current) {
+    //   audioRef.current.pause();
+    //   audioRef.current.currentTime = 0;
+    // }
   };
 
   const handleComplete = async () => {
     setIsPlaying(false);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    // Audio control disabled - videos have their own audio
+    // if (audioRef.current) {
+    //   audioRef.current.pause();
+    // }
 
     const user = auth.currentUser;
     if (!user || !selectedExercise) return;
