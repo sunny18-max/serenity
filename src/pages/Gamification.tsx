@@ -29,6 +29,7 @@ import {
   BookOpen
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { cn } from "@/lib/utils";
 
 interface Achievement {
@@ -354,8 +355,8 @@ const Gamification = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -659,6 +660,7 @@ const Gamification = () => {
           </TabsContent>
         </Tabs>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };

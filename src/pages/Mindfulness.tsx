@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { notifyMindfulnessCompleted } from "@/lib/notifications";
 import { cn } from "@/lib/utils";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 interface Exercise {
   id: string;
@@ -349,34 +350,60 @@ const Mindfulness = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
-                  <Wind className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
+        {/* Header - Mobile Optimized */}
+        <div className="mb-6 sm:mb-8">
+          {/* Mobile Header */}
+          <div className="lg:hidden">
+            <div className="flex items-center gap-3 mb-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                  <Wind className="w-4 h-4 text-white" />
                 </div>
-                Mindfulness & Meditation
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Daily practices for mental clarity and peace
-              </p>
+                <div>
+                  <h1 className="text-lg font-bold">Mindfulness</h1>
+                  <p className="text-xs text-muted-foreground">Daily practices</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden lg:flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/dashboard")}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
+                    <Wind className="w-6 h-6 text-white" />
+                  </div>
+                  Mindfulness & Meditation
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Daily practices for mental clarity and peace
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Progress Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <Card className="shadow-medium border-primary/10">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -615,6 +642,7 @@ const Mindfulness = () => {
       <audio ref={audioRef} loop>
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltryxnMpBSuBzvLZiTYIGWi77eafTRAMUKfj8LZjHAY4ktfyzHksBSR3x/DdkEAKFF606+uoVRQKRp/g8r5sIQUxh9Hz04IzBh5uwO/jmUgND1as5++wXRgIPpba8sZzKQUrgc7y2Yk2CBlou+3mn00QDFCn4/C2YxwGOJLX8sx5LAUkd8fw3ZBACh" type="audio/wav" />
       </audio>
+      <MobileBottomNav />
     </div>
   );
 };

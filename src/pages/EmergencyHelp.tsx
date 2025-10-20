@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -159,8 +161,8 @@ const EmergencyHelp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-background to-orange-50 dark:from-gray-900 dark:via-background dark:to-gray-800 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-5xl">
         {/* Emergency Alert */}
         <Alert className="mb-6 border-red-500/50 bg-red-500/10">
           <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -420,6 +422,7 @@ const EmergencyHelp = () => {
           </CardContent>
         </Card>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };
