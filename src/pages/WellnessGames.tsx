@@ -1,414 +1,713 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import {
   ArrowLeft,
-  Play,
-  Pause,
-  RotateCcw,
-  TreePine,
+  Brain,
+  Heart,
+  Smile,
   Sparkles,
-  Award,
   Target,
-  Clock,
-  Leaf,
+  Zap,
+  Cloud,
+  Sun,
+  Moon,
+  Star,
   Flower2,
-  Trees,
+  TreePine,
+  Award,
+  TrendingUp,
+  RefreshCw,
+  Play,
+  Check,
+  X,
+  Shuffle,
+  Timer,
+  Trophy,
+  Lightbulb,
+  MessageCircle,
+  Music,
+  Palette,
+  Book,
+  Coffee,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-
-interface FocusSession {
-  duration: number;
-  completed: boolean;
-  timestamp: Date;
-}
+import MobileBottomNav from "@/components/MobileBottomNav";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface GameStats {
-  totalSessions: number;
-  totalMinutes: number;
-  treesPlanted: number;
-  currentStreak: number;
-  longestStreak: number;
-  lastSessionDate: string;
+  focusMinutes: number;
+  gratitudeEntries: number;
+  breathingExercises: number;
+  thoughtChallenges: number;
+  moodBoosts: number;
+  totalPoints: number;
 }
 
 const WellnessGames = () => {
-  const [selectedDuration, setSelectedDuration] = useState(25); // minutes
-  const [timeRemaining, setTimeRemaining] = useState(25 * 60); // seconds
-  const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [treeStage, setTreeStage] = useState(0); // 0-5 growth stages
-  const [stats, setStats] = useState<GameStats>({
-    totalSessions: 0,
-    totalMinutes: 0,
-    treesPlanted: 0,
-    currentStreak: 0,
-    longestStreak: 0,
-    lastSessionDate: "",
-  });
-  const [showCelebration, setShowCelebration] = useState(false);
-  
   const navigate = useNavigate();
   const { toast } = useToast();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [stats, setStats] = useState<GameStats>({
+    focusMinutes: 0,
+    gratitudeEntries: 0,
+    breathingExercises: 0,
+    thoughtChallenges: 0,
+    moodBoosts: 0,
+    totalPoints: 0,
+  });
 
-  const durations = [
-    { value: 15, label: "15 min", icon: Leaf, color: "text-green-400" },
-    { value: 25, label: "25 min", icon: TreePine, color: "text-green-500" },
-    { value: 45, label: "45 min", icon: Trees, color: "text-green-600" },
-    { value: 60, label: "60 min", icon: Flower2, color: "text-green-700" },
+  // Gratitude Game State
+  const [gratitudeItems, setGratitudeItems] = useState<string[]>([]);
+  const [currentGratitude, setCurrentGratitude] = useState("");
+
+  // Breathing Game State
+  const [breathingPhase, setBreathingPhase] = useState<"inhale" | "hold" | "exhale" | "rest">("inhale");
+  const [breathingActive, setBreathingActive] = useState(false);
+  const [breathCount, setBreathCount] = useState(0);
+
+  // Thought Challenge State
+  const [negativeThought, setNegativeThought] = useState("");
+  const [positiveReframe, setPositiveReframe] = useState("");
+  const [thoughtHistory, setThoughtHistory] = useState<Array<{ negative: string; positive: string }>>([]);
+
+  // Mood Boost State
+  const [selectedMoodBoost, setSelectedMoodBoost] = useState<string | null>(null);
+
+  // Memory Match State
+  const [memoryCards, setMemoryCards] = useState<Array<{ id: number; emoji: string; flipped: boolean; matched: boolean }>>([]);
+  const [flippedCards, setFlippedCards] = useState<number[]>([]);
+  const [memoryMoves, setMemoryMoves] = useState(0);
+  const [memoryMatches, setMemoryMatches] = useState(0);
+
+  const moodBoostActivities = [
+    { id: 1, icon: Music, title: "Listen to Music", description: "5 min mood boost", color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950" },
+    { id: 2, icon: Coffee, title: "Mindful Tea/Coffee", description: "Savor the moment", color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" },
+    { id: 3, icon: Book, title: "Read Something", description: "Escape for 10 min", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950" },
+    { id: 4, icon: Sun, title: "Get Sunlight", description: "Vitamin D boost", color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-950" },
+    { id: 5, icon: Palette, title: "Doodle/Color", description: "Express creativity", color: "text-pink-500", bg: "bg-pink-50 dark:bg-pink-950" },
+    { id: 6, icon: MessageCircle, title: "Text a Friend", description: "Social connection", color: "text-green-500", bg: "bg-green-50 dark:bg-green-950" },
   ];
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      try {
-        const statsDoc = await getDoc(doc(db, "users", user.uid, "wellness", "focus_game"));
-        if (statsDoc.exists()) {
-          setStats(statsDoc.data() as GameStats);
-        }
-      } catch (error) {
-        console.error("Error fetching game stats:", error);
-      }
-    };
-
     fetchStats();
   }, []);
 
-  useEffect(() => {
-    if (isActive && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            handleSessionComplete();
-            return 0;
-          }
-          
-          // Update tree growth based on progress
-          const progress = ((selectedDuration * 60 - prev) / (selectedDuration * 60)) * 100;
-          const newStage = Math.min(5, Math.floor(progress / 20));
-          setTreeStage(newStage);
-          
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [isActive, isPaused, selectedDuration]);
-
-  const handleStart = () => {
-    if (!isActive) {
-      setIsActive(true);
-      setIsPaused(false);
-      setTreeStage(0);
-    }
-  };
-
-  const handlePause = () => {
-    setIsPaused(!isPaused);
-  };
-
-  const handleReset = () => {
-    setIsActive(false);
-    setIsPaused(false);
-    setTimeRemaining(selectedDuration * 60);
-    setTreeStage(0);
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-  };
-
-  const handleSessionComplete = async () => {
-    setIsActive(false);
-    setShowCelebration(true);
-
+  const fetchStats = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().split("T")[0];
-      
-      // Calculate new streak
-      let newStreak = stats.currentStreak;
-      if (stats.lastSessionDate !== today) {
-        const lastDate = new Date(stats.lastSessionDate);
-        const todayDate = new Date(today);
-        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) {
-          newStreak += 1;
-        } else if (diffDays > 1) {
-          newStreak = 1;
-        }
-      } else {
-        newStreak = stats.currentStreak || 1;
+      const statsDoc = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
+      if (statsDoc.exists()) {
+        setStats(statsDoc.data() as GameStats);
+      }
+    } catch (error) {
+      console.error("Error fetching game stats:", error);
+    }
+  };
+
+  const updateStats = async (updates: Partial<GameStats>) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const statsRef = doc(db, "users", user.uid, "wellness", "games");
+      await setDoc(statsRef, { ...stats, ...updates }, { merge: true });
+      setStats(prev => ({ ...prev, ...updates }));
+    } catch (error) {
+      console.error("Error updating stats:", error);
+    }
+  };
+
+  // Gratitude Game Functions
+  const addGratitudeItem = () => {
+    if (currentGratitude.trim()) {
+      setGratitudeItems([...gratitudeItems, currentGratitude]);
+      setCurrentGratitude("");
+      updateStats({
+        gratitudeEntries: stats.gratitudeEntries + 1,
+        totalPoints: stats.totalPoints + 10,
+      });
+      toast({
+        title: "Gratitude Added! 🌟",
+        description: "+10 wellness points",
+      });
+    }
+  };
+
+  // Breathing Exercise Functions
+  const startBreathingExercise = () => {
+    setBreathingActive(true);
+    setBreathCount(0);
+    runBreathingCycle();
+  };
+
+  const runBreathingCycle = () => {
+    const phases = [
+      { phase: "inhale" as const, duration: 4000 },
+      { phase: "hold" as const, duration: 4000 },
+      { phase: "exhale" as const, duration: 4000 },
+      { phase: "rest" as const, duration: 2000 },
+    ];
+
+    let currentPhaseIndex = 0;
+    let cycleCount = 0;
+
+    const runPhase = () => {
+      if (cycleCount >= 5) {
+        setBreathingActive(false);
+        setBreathCount(5);
+        updateStats({
+          breathingExercises: stats.breathingExercises + 1,
+          totalPoints: stats.totalPoints + 20,
+        });
+        toast({
+          title: "Breathing Exercise Complete! 🌬️",
+          description: "+20 wellness points",
+        });
+        return;
       }
 
-      const updatedStats: GameStats = {
-        totalSessions: stats.totalSessions + 1,
-        totalMinutes: stats.totalMinutes + selectedDuration,
-        treesPlanted: stats.treesPlanted + 1,
-        currentStreak: newStreak,
-        longestStreak: Math.max(newStreak, stats.longestStreak),
-        lastSessionDate: today,
-      };
-
-      await updateDoc(doc(db, "users", user.uid, "wellness", "focus_game"), {
-        totalSessions: updatedStats.totalSessions,
-        totalMinutes: updatedStats.totalMinutes,
-        treesPlanted: updatedStats.treesPlanted,
-        currentStreak: updatedStats.currentStreak,
-        longestStreak: updatedStats.longestStreak,
-        lastSessionDate: updatedStats.lastSessionDate,
-      });
-      await updateDoc(doc(db, "users", user.uid), {
-        xp: increment(selectedDuration * 5),
-      });
-
-      setStats(updatedStats);
-      setTreeStage(5);
-
-      toast({
-        title: "🎉 Focus Session Complete!",
-        description: `You planted a tree! +${selectedDuration * 5} XP earned.`,
-      });
+      const currentPhase = phases[currentPhaseIndex];
+      setBreathingPhase(currentPhase.phase);
 
       setTimeout(() => {
-        setShowCelebration(false);
-        handleReset();
-      }, 3000);
-    } catch (error) {
-      console.error("Error saving session:", error);
+        currentPhaseIndex++;
+        if (currentPhaseIndex >= phases.length) {
+          currentPhaseIndex = 0;
+          cycleCount++;
+          setBreathCount(cycleCount);
+        }
+        if (cycleCount < 5) {
+          runPhase();
+        }
+      }, currentPhase.duration);
+    };
+
+    runPhase();
+  };
+
+  // Thought Challenge Functions
+  const submitThoughtChallenge = () => {
+    if (negativeThought.trim() && positiveReframe.trim()) {
+      setThoughtHistory([...thoughtHistory, { negative: negativeThought, positive: positiveReframe }]);
+      setNegativeThought("");
+      setPositiveReframe("");
+      updateStats({
+        thoughtChallenges: stats.thoughtChallenges + 1,
+        totalPoints: stats.totalPoints + 15,
+      });
+      toast({
+        title: "Thought Reframed! 💭",
+        description: "+15 wellness points",
+      });
     }
   };
 
-  const handleDurationChange = (duration: number) => {
-    if (!isActive) {
-      setSelectedDuration(duration);
-      setTimeRemaining(duration * 60);
+  // Mood Boost Functions
+  const completeMoodBoost = (activityId: number) => {
+    setSelectedMoodBoost(activityId.toString());
+    setTimeout(() => {
+      updateStats({
+        moodBoosts: stats.moodBoosts + 1,
+        totalPoints: stats.totalPoints + 5,
+      });
+      toast({
+        title: "Mood Boost Complete! 😊",
+        description: "+5 wellness points",
+      });
+      setSelectedMoodBoost(null);
+    }, 1000);
+  };
+
+  // Memory Match Game Functions
+  const initMemoryGame = () => {
+    const emojis = ["🌸", "🌺", "🌻", "🌷", "🌹", "🌼", "🍀", "🌿"];
+    const cards = [...emojis, ...emojis]
+      .sort(() => Math.random() - 0.5)
+      .map((emoji, index) => ({
+        id: index,
+        emoji,
+        flipped: false,
+        matched: false,
+      }));
+    setMemoryCards(cards);
+    setFlippedCards([]);
+    setMemoryMoves(0);
+    setMemoryMatches(0);
+  };
+
+  const flipCard = (id: number) => {
+    if (flippedCards.length === 2 || memoryCards[id].matched || memoryCards[id].flipped) return;
+
+    const newCards = [...memoryCards];
+    newCards[id].flipped = true;
+    setMemoryCards(newCards);
+
+    const newFlipped = [...flippedCards, id];
+    setFlippedCards(newFlipped);
+
+    if (newFlipped.length === 2) {
+      setMemoryMoves(memoryMoves + 1);
+      const [first, second] = newFlipped;
+      
+      if (memoryCards[first].emoji === memoryCards[second].emoji) {
+        setTimeout(() => {
+          const matchedCards = [...memoryCards];
+          matchedCards[first].matched = true;
+          matchedCards[second].matched = true;
+          setMemoryCards(matchedCards);
+          setFlippedCards([]);
+          setMemoryMatches(memoryMatches + 1);
+
+          if (memoryMatches + 1 === 8) {
+            updateStats({
+              totalPoints: stats.totalPoints + 25,
+            });
+            toast({
+              title: "Memory Game Complete! 🎉",
+              description: "+25 wellness points",
+            });
+          }
+        }, 500);
+      } else {
+        setTimeout(() => {
+          const resetCards = [...memoryCards];
+          resetCards[first].flipped = false;
+          resetCards[second].flipped = false;
+          setMemoryCards(resetCards);
+          setFlippedCards([]);
+        }, 1000);
+      }
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const getBreathingMessage = () => {
+    switch (breathingPhase) {
+      case "inhale": return "Breathe In...";
+      case "hold": return "Hold...";
+      case "exhale": return "Breathe Out...";
+      case "rest": return "Rest...";
+    }
   };
 
-  const progress = ((selectedDuration * 60 - timeRemaining) / (selectedDuration * 60)) * 100;
-
-  const getTreeEmoji = () => {
-    const stages = ["🌱", "🌿", "🪴", "🌳", "🌲", "🌲✨"];
-    return stages[treeStage] || "🌱";
-  };
-
-  const getMotivationalMessage = () => {
-    if (progress < 25) return "Your tree is sprouting...";
-    if (progress < 50) return "Keep going! Your tree is growing...";
-    if (progress < 75) return "Almost there! Your tree is flourishing...";
-    if (progress < 100) return "Final stretch! Your tree is maturing...";
-    return "Beautiful! Your tree is fully grown!";
+  const getBreathingColor = () => {
+    switch (breathingPhase) {
+      case "inhale": return "bg-blue-500";
+      case "hold": return "bg-purple-500";
+      case "exhale": return "bg-green-500";
+      case "rest": return "bg-gray-400";
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-background to-blue-50 dark:from-gray-900 dark:via-background dark:to-gray-800 pb-16 lg:pb-0">
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-5xl">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-16 lg:pb-0">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")} className="flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <Badge variant="secondary" className="text-sm">
-            <Award className="w-4 h-4 mr-1" />
-            {stats.treesPlanted} Trees Planted
-          </Badge>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="flex items-center gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <Badge variant="secondary" className="text-sm">
+              <Trophy className="w-4 h-4 mr-1" />
+              {stats.totalPoints} Points
+            </Badge>
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Wellness Games
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Fun activities to boost your mental health
+            </p>
+          </div>
         </div>
 
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            Focus Forest
-          </h1>
-          <p className="text-muted-foreground">
-            Stay focused and grow your mental wellness forest
-          </p>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Heart className="w-6 h-6 mx-auto mb-1 text-red-500" />
+              <p className="text-xl font-bold">{stats.gratitudeEntries}</p>
+              <p className="text-xs text-muted-foreground">Gratitude</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Cloud className="w-6 h-6 mx-auto mb-1 text-blue-500" />
+              <p className="text-xl font-bold">{stats.breathingExercises}</p>
+              <p className="text-xs text-muted-foreground">Breathing</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Brain className="w-6 h-6 mx-auto mb-1 text-purple-500" />
+              <p className="text-xl font-bold">{stats.thoughtChallenges}</p>
+              <p className="text-xs text-muted-foreground">Thoughts</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Smile className="w-6 h-6 mx-auto mb-1 text-yellow-500" />
+              <p className="text-xl font-bold">{stats.moodBoosts}</p>
+              <p className="text-xs text-muted-foreground">Mood Boosts</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Sparkles className="w-6 h-6 mx-auto mb-1 text-orange-500" />
+              <p className="text-xl font-bold">{stats.totalPoints}</p>
+              <p className="text-xs text-muted-foreground">Total Points</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <TrendingUp className="w-6 h-6 mx-auto mb-1 text-green-500" />
+              <p className="text-xl font-bold">
+                {stats.gratitudeEntries + stats.breathingExercises + stats.thoughtChallenges + stats.moodBoosts}
+              </p>
+              <p className="text-xs text-muted-foreground">Activities</p>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {/* Stats Cards */}
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Clock className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{stats.totalMinutes}</p>
-              <p className="text-sm text-muted-foreground">Total Minutes</p>
-            </CardContent>
-          </Card>
+        {/* Games Tabs */}
+        <Tabs defaultValue="gratitude" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 mb-6">
+            <TabsTrigger value="gratitude">Gratitude</TabsTrigger>
+            <TabsTrigger value="breathing">Breathing</TabsTrigger>
+            <TabsTrigger value="thoughts">Thoughts</TabsTrigger>
+            <TabsTrigger value="mood">Mood Boost</TabsTrigger>
+            <TabsTrigger value="memory">Memory</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Target className="w-8 h-8 mx-auto mb-2 text-green-500" />
-              <p className="text-2xl font-bold">{stats.totalSessions}</p>
-              <p className="text-sm text-muted-foreground">Sessions</p>
-            </CardContent>
-          </Card>
+          {/* Gratitude Game */}
+          <TabsContent value="gratitude">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-red-500" />
+                  Gratitude Journal
+                </CardTitle>
+                <CardDescription>
+                  Write down 3 things you're grateful for today
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={currentGratitude}
+                    onChange={(e) => setCurrentGratitude(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && addGratitudeItem()}
+                    placeholder="I'm grateful for..."
+                    className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <Button onClick={addGratitudeItem} disabled={!currentGratitude.trim()}>
+                    <Check className="w-4 h-4" />
+                  </Button>
+                </div>
 
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Sparkles className="w-8 h-8 mx-auto mb-2 text-orange-500" />
-              <p className="text-2xl font-bold">{stats.currentStreak}</p>
-              <p className="text-sm text-muted-foreground">Day Streak</p>
-            </CardContent>
-          </Card>
-        </div>
+                <div className="space-y-2">
+                  <AnimatePresence>
+                    {gratitudeItems.map((item, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg"
+                      >
+                        <Star className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm flex-1">{item}</p>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
 
-        {/* Main Timer Card */}
-        <Card className="shadow-xl border-2">
-          <CardHeader>
-            <CardTitle className="text-center">Focus Timer</CardTitle>
-            <CardDescription className="text-center">
-              Choose your focus duration and watch your tree grow
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Duration Selection */}
-            {!isActive && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                {durations.map((dur) => {
-                  const Icon = dur.icon;
-                  return (
-                    <Button
-                      key={dur.value}
-                      variant={selectedDuration === dur.value ? "default" : "outline"}
-                      className="h-20 flex-col gap-2"
-                      onClick={() => handleDurationChange(dur.value)}
-                    >
-                      <Icon className={cn("w-6 h-6", dur.color)} />
-                      <span className="text-xs">{dur.label}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Tree Display */}
-            <div className="relative">
-              <div
-                className={cn(
-                  "text-9xl text-center transition-all duration-500",
-                  showCelebration && "animate-bounce"
+                {gratitudeItems.length >= 3 && (
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <Sparkles className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                    <p className="font-semibold text-green-700 dark:text-green-400">
+                      Amazing! You've completed your gratitude practice! 🌟
+                    </p>
+                  </div>
                 )}
-              >
-                {getTreeEmoji()}
-              </div>
-              {isActive && (
-                <p className="text-center text-sm text-muted-foreground mt-2">
-                  {getMotivationalMessage()}
-                </p>
-              )}
-            </div>
-
-            {/* Timer Display */}
-            <div className="text-center">
-              <p className="text-6xl font-bold font-mono">{formatTime(timeRemaining)}</p>
-              <Progress value={progress} className="mt-4 h-3" />
-            </div>
-
-            {/* Controls */}
-            <div className="flex justify-center gap-4">
-              {!isActive ? (
-                <Button size="lg" onClick={handleStart} className="px-8">
-                  <Play className="w-5 h-5 mr-2" />
-                  Start Focus
-                </Button>
-              ) : (
-                <>
-                  <Button size="lg" variant="outline" onClick={handlePause}>
-                    <Pause className="w-5 h-5 mr-2" />
-                    {isPaused ? "Resume" : "Pause"}
-                  </Button>
-                  <Button size="lg" variant="destructive" onClick={handleReset}>
-                    <RotateCcw className="w-5 h-5 mr-2" />
-                    Reset
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {/* Tips */}
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-center text-muted-foreground">
-                  💡 <strong>Tip:</strong> Put your phone away, close unnecessary tabs, and focus on one task.
-                  Your tree will die if you leave this page!
-                </p>
               </CardContent>
             </Card>
-          </CardContent>
-        </Card>
+          </TabsContent>
 
-        {/* How It Works */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TreePine className="w-5 h-5 text-green-500" />
-              How It Works
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Badge className="mt-1">1</Badge>
-              <div>
-                <p className="font-medium">Choose Your Duration</p>
-                <p className="text-sm text-muted-foreground">
-                  Select a focus period (15-60 minutes)
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="mt-1">2</Badge>
-              <div>
-                <p className="font-medium">Stay Focused</p>
-                <p className="text-sm text-muted-foreground">
-                  Watch your tree grow as you maintain focus
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="mt-1">3</Badge>
-              <div>
-                <p className="font-medium">Plant Your Tree</p>
-                <p className="text-sm text-muted-foreground">
-                  Complete the session to add a tree to your forest and earn XP
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge className="mt-1">4</Badge>
-              <div>
-                <p className="font-medium">Build Your Streak</p>
-                <p className="text-sm text-muted-foreground">
-                  Focus daily to maintain your streak and grow your forest
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Breathing Exercise */}
+          <TabsContent value="breathing">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cloud className="w-5 h-5 text-blue-500" />
+                  Box Breathing
+                </CardTitle>
+                <CardDescription>
+                  4-4-4-4 breathing technique for calm and focus
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="text-center">
+                  <motion.div
+                    className={cn(
+                      "w-48 h-48 mx-auto rounded-full flex items-center justify-center transition-colors duration-1000",
+                      getBreathingColor()
+                    )}
+                    animate={breathingActive ? {
+                      scale: breathingPhase === "inhale" ? 1.2 : breathingPhase === "exhale" ? 0.8 : 1
+                    } : {}}
+                    transition={{ duration: breathingPhase === "rest" ? 2 : 4 }}
+                  >
+                    <div className="text-white text-center">
+                      <p className="text-2xl font-bold mb-2">{getBreathingMessage()}</p>
+                      <p className="text-sm">Cycle {breathCount}/5</p>
+                    </div>
+                  </motion.div>
+                </div>
+
+                <div className="text-center space-y-4">
+                  {!breathingActive ? (
+                    <Button onClick={startBreathingExercise} size="lg" className="w-full sm:w-auto">
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Breathing Exercise
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Follow the circle's movement with your breath
+                      </p>
+                      <div className="flex justify-center gap-2">
+                        {[...Array(5)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "w-3 h-3 rounded-full",
+                              i < breathCount ? "bg-blue-500" : "bg-gray-300"
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-blue-700 dark:text-blue-400">Benefits:</h4>
+                  <ul className="text-sm space-y-1 text-blue-600 dark:text-blue-300">
+                    <li>• Reduces stress and anxiety</li>
+                    <li>• Improves focus and concentration</li>
+                    <li>• Lowers blood pressure</li>
+                    <li>• Promotes relaxation</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Thought Challenge */}
+          <TabsContent value="thoughts">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-500" />
+                  Thought Challenger
+                </CardTitle>
+                <CardDescription>
+                  Reframe negative thoughts using CBT techniques
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Negative Thought</label>
+                    <textarea
+                      value={negativeThought}
+                      onChange={(e) => setNegativeThought(e.target.value)}
+                      placeholder="Write down a negative or unhelpful thought..."
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Positive Reframe</label>
+                    <textarea
+                      value={positiveReframe}
+                      onChange={(e) => setPositiveReframe(e.target.value)}
+                      placeholder="How can you reframe this thought more positively or realistically?"
+                      className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px]"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={submitThoughtChallenge}
+                    disabled={!negativeThought.trim() || !positiveReframe.trim()}
+                    className="w-full"
+                  >
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Submit Reframe
+                  </Button>
+                </div>
+
+                {thoughtHistory.length > 0 && (
+                  <div className="space-y-3 mt-6">
+                    <h4 className="font-semibold">Your Progress:</h4>
+                    {thoughtHistory.slice(-3).reverse().map((entry, index) => (
+                      <div key={index} className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-start gap-2">
+                          <X className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
+                          <p className="text-sm text-muted-foreground">{entry.negative}</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />
+                          <p className="text-sm font-medium">{entry.positive}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Mood Boost Activities */}
+          <TabsContent value="mood">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smile className="w-5 h-5 text-yellow-500" />
+                  Quick Mood Boosters
+                </CardTitle>
+                <CardDescription>
+                  5-minute activities to lift your spirits
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {moodBoostActivities.map((activity) => {
+                    const Icon = activity.icon;
+                    const isSelected = selectedMoodBoost === activity.id.toString();
+                    
+                    return (
+                      <motion.div
+                        key={activity.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Card
+                          className={cn(
+                            "cursor-pointer transition-all",
+                            isSelected && "ring-2 ring-primary",
+                            activity.bg
+                          )}
+                          onClick={() => completeMoodBoost(activity.id)}
+                        >
+                          <CardContent className="p-6 text-center">
+                            <Icon className={cn("w-12 h-12 mx-auto mb-3", activity.color)} />
+                            <h3 className="font-semibold mb-1">{activity.title}</h3>
+                            <p className="text-xs text-muted-foreground">{activity.description}</p>
+                            {isSelected && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="mt-3"
+                              >
+                                <Check className="w-6 h-6 mx-auto text-green-500" />
+                              </motion.div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Memory Match Game */}
+          <TabsContent value="memory">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Flower2 className="w-5 h-5 text-pink-500" />
+                  Mindful Memory Match
+                </CardTitle>
+                <CardDescription>
+                  Match the flowers to improve focus and memory
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm">
+                    <span className="font-semibold">Moves:</span> {memoryMoves}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-semibold">Matches:</span> {memoryMatches}/8
+                  </div>
+                  <Button onClick={initMemoryGame} variant="outline" size="sm">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    New Game
+                  </Button>
+                </div>
+
+                {memoryCards.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Button onClick={initMemoryGame} size="lg">
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Game
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-3">
+                    {memoryCards.map((card) => (
+                      <motion.div
+                        key={card.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => flipCard(card.id)}
+                        className={cn(
+                          "aspect-square rounded-lg flex items-center justify-center text-4xl cursor-pointer transition-all",
+                          card.flipped || card.matched
+                            ? "bg-white dark:bg-gray-800 border-2 border-primary"
+                            : "bg-primary/20 hover:bg-primary/30"
+                        )}
+                      >
+                        {card.flipped || card.matched ? card.emoji : "?"}
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {memoryMatches === 8 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg"
+                  >
+                    <Trophy className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                    <p className="font-semibold text-green-700 dark:text-green-400">
+                      Congratulations! You matched all pairs in {memoryMoves} moves! 🎉
+                    </p>
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
+      <MobileBottomNav />
     </div>
   );
 };
