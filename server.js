@@ -415,6 +415,10 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0064afd847729d2743564b0409a4ad35b59dc33e
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
