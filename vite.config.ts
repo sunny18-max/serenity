@@ -4,13 +4,12 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
+  base: '/',
   server: {
     host: "::",
     port: 8080,
-
     // 👇 Add this section to allow Render backend host
     allowedHosts: ["serenity-s1io.onrender.com"],
-
     // Optional: If you use proxy for API calls in local dev
     proxy: {
       "/api": {

@@ -30,3 +30,5 @@ securityAccountKey.json
 *.sw?
 # Local Netlify folder
 .netlify
+
+.vercel

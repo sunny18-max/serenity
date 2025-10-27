@@ -44,7 +44,7 @@ const AuthPage = () => {
   // Check if user exists - with better fallback handling
   const checkUserExists = async (email: string): Promise<{ exists: boolean; uid?: string }> => {
     try {
-      const API_URL = "http://localhost:3001";
+      const API_URL = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3001"; // Use environment variable
       const checkRes = await fetch(`${API_URL}/api/auth/check-user`, {
         method: "POST",
         headers: {
