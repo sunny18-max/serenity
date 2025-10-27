@@ -415,11 +415,11 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Server is running',
     timestamp: new Date().toISOString()
   });
@@ -430,7 +430,3 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Health check available at http://localhost:${PORT}/api/health`);
 });
-=======
-const PORT = 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
->>>>>>> 4695dcb95b8e1ac2ca0e01b21b4f4ff449cad8ed
