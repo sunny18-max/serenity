@@ -283,11 +283,12 @@ const Progress = () => {
         </motion.div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           {[
             { icon: BarChart3, value: assessments.length, label: "Total Assessments", color: "primary" },
             { icon: TrendingUp, value: user?.wellness_score || 0, label: "Wellness Score", color: "wellness" },
-            { icon: Calendar, value: user?.streak || 0, label: "Day Streak", color: "energy" }
+            { icon: Calendar, value: user?.streak || 0, label: "Day Streak", color: "energy" },
+            { icon: Sparkles, value: [...new Set(assessments.map(a => a.type))].length, label: "Assessment Types", color: "focus" }
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -322,36 +323,7 @@ const Progress = () => {
               </Card>
             </motion.div>
           ))}
-          
-          <Card className="shadow-medium">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-energy/10 rounded-full flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-energy" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{user?.streak || 0}</p>
-                  <p className="text-sm text-muted-foreground">Day Streak</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="shadow-medium">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center">
-                  <Badge variant="secondary" className="text-xs">
-                    {[...new Set(assessments.map(a => a.type))].length}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{[...new Set(assessments.map(a => a.type))].length}</p>
-                  <p className="text-sm text-muted-foreground">Assessment Types</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Insights */}

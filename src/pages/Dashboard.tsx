@@ -156,8 +156,8 @@ const Sidebar = ({
     { icon: BarChart3, label: "Assessment Center", path: "/assessment-center" },
     { icon: LineChart, label: "Progress", path: "/progress" },
     { icon: BookOpen, label: "Resources", path: "/resources" },
-    { icon: Users, label: "Community", path: "/community" },
-    { icon: Award, label: "Achievements", path: "/achievements" },
+    { icon: Users, label: "Community", path: "/community" }, // Assuming this is the correct path
+    { icon: Award, label: "Achievements", path: "/gamification" },
   ];
 
   return (

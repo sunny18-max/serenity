@@ -68,12 +68,12 @@ const Contact = () => {
               <h1 className="text-xl font-cursive font-bold text-gradient-primary">Serenity</h1>
             </div>
             <Link 
-          to="/" 
-          className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors mb-2"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Home
-        </Link>
+              to="/" 
+              className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Link>
           </div>
         </div>
       </header>

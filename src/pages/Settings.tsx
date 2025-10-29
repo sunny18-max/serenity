@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,7 +19,8 @@ import {
   Moon,
   Sun,
   Volume2,
-  Mail,
+  Mail, 
+  Palette,
   Smartphone,
   FileText
 } from "lucide-react";
@@ -50,7 +52,8 @@ const SettingsPage = () => {
     preferences: {
       darkMode: false,
       language: 'en',
-      reminderFrequency: 'daily'
+      reminderFrequency: 'daily',
+      theme: 'default'
     }
   });
   const [assessmentCount, setAssessmentCount] = useState(0);
@@ -63,7 +66,10 @@ const SettingsPage = () => {
       if (userDoc.exists()) {
         const data = userDoc.data();
         setUser(data);
-        if (data.settings) setSettings(data.settings);
+        // Merge settings to avoid losing new properties
+        if (data.settings) {
+          setSettings(prev => ({ ...prev, ...data.settings }));
+        }
       }
       // Fetch assessments count from subcollection
       const assessmentsSnapshot = await getDocs(collection(db, "users", currentUser.uid, "assessments"));
@@ -71,6 +77,17 @@ const SettingsPage = () => {
     };
     fetchUserData();
   }, []);
+
+  useEffect(() => {
+    // Apply theme class to the root element
+    const root = document.documentElement;
+    root.classList.remove('theme-default', 'theme-mindful-master'); // Remove old themes
+    if (settings.preferences.theme === 'mindful_master') {
+      root.classList.add('theme-mindful-master');
+    } else {
+      root.classList.add('theme-default');
+    }
+  }, [settings.preferences.theme]);
 
   const handleSaveProfile = async () => {
     const currentUser = auth.currentUser;
@@ -537,6 +554,38 @@ const SettingsPage = () => {
                     <Save className="w-4 h-4" />
                     Save Privacy Settings
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-medium">
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Customize the look and feel of the app.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Palette className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">App Theme</p>
+                      <p className="text-sm text-muted-foreground">Change the application's color scheme.</p>
+                    </div>
+                  </div>
+                  <Select
+                    value={settings.preferences.theme}
+                    onValueChange={(value) => updateSettings('preferences', 'theme', value)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="mindful_master" disabled={!user?.unlocked_themes?.includes('mindful_master')}>
+                        Mindful Master {user?.unlocked_themes?.includes('mindful_master') ? '' : '(Lvl 10)'}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

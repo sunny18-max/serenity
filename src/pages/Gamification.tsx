@@ -1,12 +1,21 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, increment, onSnapshot } from "firebase/firestore";
 import { 
   Trophy,
   Star,
@@ -26,7 +35,9 @@ import {
   Gift,
   Calendar,
   Users,
-  BookOpen
+  BookOpen,
+  Palette,
+  Rocket
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -237,6 +248,49 @@ const weeklyChallenges: Challenge[] = [
   }
 ];
 
+const levelRewards = [
+  { level: 5, title: "New App Icon", description: "Unlock a new exclusive app icon to customize your home screen.", icon: Sparkles },
+  { level: 10, title: "Mindful Master Theme", description: "Access a new calming theme for the entire application.", icon: Palette },
+  { level: 20, title: "Early Feature Access", description: "Get a sneak peek at new features before anyone else.", icon: Rocket },
+  { level: 30, title: "Premium Meditation Pack", description: "Unlock a pack of premium guided meditation sessions.", icon: Brain },
+  { level: 50, title: "Legendary Profile Badge", description: "Display a prestigious 'Legendary' badge on your profile.", icon: Crown },
+];
+
+const RewardItem = ({ reward, userLevel }: { reward: typeof levelRewards[0], userLevel: number }) => {
+  const isUnlocked = userLevel >= reward.level;
+  const Icon = reward.icon;
+  return (
+    <div className={cn("flex items-center gap-4 p-3 rounded-lg border", isUnlocked ? "border-primary/30 bg-primary/5" : "border-border bg-muted/50 opacity-60")}>
+      <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", isUnlocked ? "bg-primary text-white" : "bg-muted-foreground/20 text-muted-foreground")}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="flex-grow">
+        <p className="font-semibold">{reward.title}</p>
+        <p className="text-sm text-muted-foreground">{reward.description}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs text-muted-foreground">Lvl</p>
+        <p className="font-bold text-lg">{reward.level}</p>
+      </div>
+      {isUnlocked ? <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" /> : <Lock className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
+    </div>
+  );
+};
+
+const RewardsDialog = ({ open, onOpenChange, userLevel }: { open: boolean, onOpenChange: (open: boolean) => void, userLevel: number }) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Level Rewards</DialogTitle>
+        <DialogDescription>Here are the rewards you can unlock as you progress on your wellness journey.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-4">
+        {levelRewards.map(reward => <RewardItem key={reward.level} reward={reward} userLevel={userLevel} />)}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 const Gamification = () => {
   const [userStats, setUserStats] = useState<UserStats>({
     level: 1,
@@ -249,6 +303,9 @@ const Gamification = () => {
   });
   const [achievements, setAchievements] = useState<Achievement[]>(achievementsList);
   const [challenges, setChallenges] = useState<Challenge[]>([...dailyChallenges, ...weeklyChallenges]);
+  const [showRewards, setShowRewards] = useState(false);
+  const [user, setUser] = useState<any>(null); // Store current user object
+  const [userDBData, setUserDBData] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -259,10 +316,14 @@ const Gamification = () => {
         return;
       }
 
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
+      setUser(user); // Store the user object
+      
+      // Use onSnapshot for real-time updates
+      const userDocRef = doc(db, "users", user.uid);
+      const unsubscribeUser = onSnapshot(userDocRef, (userDoc) => {
         if (userDoc.exists()) {
           const data = userDoc.data();
+          setUserDBData(data); // Store original data
           
           // Calculate level from XP
           const totalXP = data.xp || 0;
@@ -277,6 +338,9 @@ const Gamification = () => {
           else if (level >= 20) rank = "Expert";
           else if (level >= 10) rank = "Advanced";
           else if (level >= 5) rank = "Intermediate";
+
+          // Check for newly unlocked rewards and achievements
+          checkForUnlocks(level, data);
 
           setUserStats({
             level,
@@ -303,13 +367,108 @@ const Gamification = () => {
           }));
           setChallenges(updatedChallenges);
         }
-      } catch (error) {
+      }, (error) => {
         console.error("Error loading user stats:", error);
-      }
+      });
+
+      return () => unsubscribeUser();
     });
 
     return () => unsubscribe();
-  }, [navigate]);
+  }, [navigate]); // Removed dependencies that might cause re-runs
+
+  const checkForUnlocks = async (currentLevel: number, currentData: any) => {
+    if (!user) return;
+
+    const unlockedRewards = currentData.unlockedRewards || {};
+    const currentUnlockedAchievements = currentData.unlockedAchievements || [];
+    const updates: any = {};
+    let xpGainedFromUnlocks = 0;
+    const newlyUnlockedAchievementIds: string[] = [];
+
+    // 1. Check for Level Rewards
+    levelRewards.forEach(reward => {
+      if (currentLevel >= reward.level && !unlockedRewards[reward.level]) {
+        unlockedRewards[reward.level] = true;
+        updates['unlockedRewards'] = unlockedRewards; // Update the whole object
+
+        // Add specific flags for each reward
+        if (reward.title.includes("New App Icon")) {
+          updates['unlocked_app_icons'] = [...(currentData.unlocked_app_icons || []), 'neon'];
+        }
+        if (reward.title.includes("Theme")) {
+          updates['unlocked_themes'] = [...(currentData.unlocked_themes || []), 'mindful_master'];
+        }
+        if (reward.title.includes("Early Feature Access")) {
+          updates['earlyAccess'] = true;
+        }
+        if (reward.title.includes("Premium Meditation")) {
+          updates['premiumMeditationUnlocked'] = true;
+        }
+        if (reward.title.includes("Legendary Profile Badge")) {
+          updates['legendaryBadge'] = true;
+        }
+        
+        toast({
+          title: `🎉 Reward Unlocked: ${reward.title}!`,
+          description: `You've reached Level ${reward.level}. ${reward.description}`,
+          duration: 5000,
+        });
+      }
+    });
+
+    // 2. Check for Achievements
+    achievementsList.forEach(achievement => {
+      if (currentUnlockedAchievements.includes(achievement.id)) return; // Already unlocked
+
+      let unlockedThisAchievement = false;
+
+      switch (achievement.category) {
+        case "assessment":
+          if (currentData.assessments_count >= achievement.requirement) unlockedThisAchievement = true;
+          break;
+        case "streak":
+          if (currentData.streak >= achievement.requirement) unlockedThisAchievement = true;
+          break;
+        case "mindfulness":
+          if (currentData.totalMindfulnessMinutes >= achievement.requirement) unlockedThisAchievement = true;
+          break;
+        case "special": // For Wellness Champion
+          if (achievement.id === "wellness-champion" && currentData.wellness_score >= achievement.requirement) unlockedThisAchievement = true;
+          break;
+        case "community": // Community Helper - requires community interaction count
+          // This achievement will remain locked until community interaction tracking is implemented
+          break;
+      }
+
+      if (unlockedThisAchievement) {
+        newlyUnlockedAchievementIds.push(achievement.id);
+        xpGainedFromUnlocks += achievement.xpReward;
+        toast({
+          title: `🏆 Achievement Unlocked: ${achievement.title}!`,
+          description: achievement.description,
+          duration: 5000,
+        });
+      }
+    });
+
+    if (newlyUnlockedAchievementIds.length > 0) {
+      updates['unlockedAchievements'] = [...currentUnlockedAchievements, ...newlyUnlockedAchievementIds];
+      updates['xp'] = increment(xpGainedFromUnlocks);
+      updates['totalXP'] = increment(xpGainedFromUnlocks);
+    }
+
+    // Only update if there are actual changes to be made
+    if (Object.keys(updates).length > 0) {
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          ...updates
+        });
+      } catch (error) {
+        console.error("Error saving new rewards:", error);
+      }
+    }
+  };
 
   const calculateChallengeProgress = (challenge: Challenge, userData: any): number => {
     switch (challenge.id) {
@@ -432,7 +591,7 @@ const Gamification = () => {
               <div className="text-center">
                 <Gift className="w-16 h-16 mx-auto mb-3 text-primary/50" />
                 <p className="text-sm text-muted-foreground mb-2">Next Reward</p>
-                <Button size="sm" variant="outline" className="w-full">
+                <Button size="sm" variant="outline" className="w-full" onClick={() => setShowRewards(true)}>
                   <Shield className="w-4 h-4 mr-2" />
                   View Rewards
                 </Button>
@@ -440,6 +599,7 @@ const Gamification = () => {
             </div>
           </CardContent>
         </Card>
+        <RewardsDialog open={showRewards} onOpenChange={setShowRewards} userLevel={userStats.level} />
 
         <Tabs defaultValue="challenges" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">

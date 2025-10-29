@@ -118,6 +118,8 @@ app.post('/api/auth/signup', async (req, res) => {
       wellness_score: 0,
       game_scores: {},
       streak: 0,
+      xp: 0, // Initialize XP for new users
+      totalXP: 0, // Initialize total XP for new users
       assessments_count: 0,
       has_completed_initial_assessment: false,
       moods: [],
