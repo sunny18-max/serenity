@@ -1,11 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import axios from "axios"; // Ensure axios is imported
 import {
   ArrowLeft, Play, Pause, RotateCcw, TreePine, Sparkles, Award, Target, Clock,
   Leaf, Flower2, Trees, Brain, Heart, Zap, Trophy, Star, Smile, Cloud, Home
@@ -33,6 +43,7 @@ const WellnessGames = () => {
     forestMinutes: 0, treesPlanted: 0, memoryHighScore: 0,
     breathingSessions: 0, gratitudeCount: 0, whackScore: 0, totalPoints: 0
   });
+  const [instructionGame, setInstructionGame] = useState<any | null>(null);
 
   // Forest Game
   const [forestDuration, setForestDuration] = useState(25);
@@ -64,12 +75,27 @@ const WellnessGames = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const games = [
-    { id: "forest", title: "Focus Forest 🌳", desc: "Grow trees by staying focused", icon: TreePine, color: "from-green-400 to-emerald-600", points: stats.forestMinutes },
-    { id: "memory", title: "Memory Match 🎴", desc: "Match pairs & boost memory", icon: Brain, color: "from-purple-400 to-pink-600", points: stats.memoryHighScore },
-    { id: "breathing", title: "Calm Bubbles 🫧", desc: "Breathe with floating bubbles", icon: Cloud, color: "from-blue-400 to-cyan-600", points: stats.breathingSessions },
-    { id: "gratitude", title: "Gratitude Garden 🌸", desc: "Plant flowers of gratitude", icon: Flower2, color: "from-pink-400 to-rose-600", points: stats.gratitudeCount },
-    { id: "whack", title: "Whack-a-Stress 🎯", desc: "Smash away your worries!", icon: Zap, color: "from-orange-400 to-red-600", points: stats.whackScore }
+  const games: any[] = [
+    { 
+      id: "forest", title: "Focus Forest 🌳", desc: "Grow trees by staying focused", icon: TreePine, color: "from-green-400 to-emerald-600", points: stats.forestMinutes,
+      instructions: "Select a duration (15-60 mins). Click 'Start Focus' and a tree will grow. If you leave the page, the tree dies. Complete the session to plant the tree and earn points."
+    },
+    { 
+      id: "memory", title: "Memory Match 🎴", desc: "Match pairs & boost memory", icon: Brain, color: "from-purple-400 to-pink-600", points: stats.memoryHighScore,
+      instructions: "Click on cards to reveal them. Find all matching pairs to complete the game. The fewer moves you make, the higher your score!"
+    },
+    { 
+      id: "breathing", title: "Calm Bubbles 🫧", desc: "Breathe with floating bubbles", icon: Cloud, color: "from-blue-400 to-cyan-600", points: stats.breathingSessions,
+      instructions: "Click 'Start Breathing' and follow the on-screen guide. Breathe in as the bubble grows, hold, and breathe out as it shrinks. Complete 5 cycles to feel calmer."
+    },
+    { 
+      id: "gratitude", title: "Gratitude Garden 🌸", desc: "Plant flowers of gratitude", icon: Flower2, color: "from-pink-400 to-rose-600", points: stats.gratitudeCount,
+      instructions: "Type something you're grateful for in the input box and press the flower button. Each entry plants a flower in your garden, helping you cultivate positivity."
+    },
+    { 
+      id: "whack", title: "Whack-a-Stress 🎯", desc: "Smash away your worries!", icon: Zap, color: "from-orange-400 to-red-600", points: stats.whackScore,
+      instructions: "When the game starts, anxious faces (😰) will pop up. Click them as fast as you can to score points before the 30-second timer runs out. Avoid the calm faces (💤)!"
+    }
   ];
 
   useEffect(() => {
@@ -97,17 +123,31 @@ const WellnessGames = () => {
     const user = auth.currentUser;
     if (!user) return;
     try {
-      const doc = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
-      if (doc.exists()) setStats(doc.data() as GameStats);
+      const docSnap = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
+      if (docSnap.exists()) {
+        setStats(docSnap.data() as GameStats);
+      }
     } catch (e) { console.error(e); }
   };
 
   const updateStats = async (updates: Partial<GameStats>) => {
     const user = auth.currentUser;
     if (!user) return;
+    
+    // Use a functional update to ensure we have the latest state
+    const newStats = await new Promise<GameStats>(resolve => {
+      setStats(prevStats => {
+        const updated = { ...prevStats, ...updates };
+        resolve(updated);
+        return updated;
+      });
+    });
+
     try {
-      await setDoc(doc(db, "users", user.uid, "wellness", "games"), { ...stats, ...updates }, { merge: true });
-      setStats(prev => ({ ...prev, ...updates }));
+      await axios.post('/api/user/wellness-game-stats', {
+        uid: user.uid,
+        stats: newStats
+      });
     } catch (e) { console.error(e); }
   };
 
@@ -196,34 +236,53 @@ const WellnessGames = () => {
   };
 
   const startWhack = () => {
-    setWhackActive(true);
     setWhackScore(0);
     setWhackTime(30);
+    setWhackActive(true);
+
     const interval = setInterval(() => {
       setWhackTime(t => {
         if (t <= 1) {
           clearInterval(interval);
           setWhackActive(false);
-          updateStats({ whackScore: Math.max(stats.whackScore, whackScore), totalPoints: stats.totalPoints + whackScore });
-          toast({ title: "🎯 Game Over!", description: `Score: ${whackScore}` });
+          // Use functional update to get the latest score
+          setWhackScore(currentScore => {
+            updateStats({ whackScore: Math.max(stats.whackScore, currentScore), totalPoints: stats.totalPoints + currentScore });
+            toast({ title: "🎯 Game Over!", description: `Score: ${currentScore}` });
+            return currentScore;
+          });
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-
-    const moleInterval = setInterval(() => {
-      if (!whackActive) { clearInterval(moleInterval); return; }
-      const idx = Math.floor(Math.random() * 9);
-      setWhackMoles(m => { const n = [...m]; n[idx] = true; return n; });
-      setTimeout(() => setWhackMoles(m => { const n = [...m]; n[idx] = false; return n; }), 800);
-    }, 1200);
   };
+
+  useEffect(() => {
+    if (whackActive) {
+      const moleInterval = setInterval(() => {
+        const idx = Math.floor(Math.random() * 9);
+        setWhackMoles(m => { const n = [...m]; n[idx] = true; return n; });
+        setTimeout(() => setWhackMoles(m => { const n = [...m]; n[idx] = false; return n; }), 800);
+      }, 1200);
+      return () => clearInterval(moleInterval);
+    }
+  }, [whackActive]);
 
   const whackMole = (idx: number) => {
     if (!whackMoles[idx]) return;
     setWhackScore(s => s + 10);
     setWhackMoles(m => { const n = [...m]; n[idx] = false; return n; });
+  };
+
+  const handlePlayClick = (game: any) => {
+    setInstructionGame(game);
+  };
+
+  const startGame = (gameId: GameType) => {
+    setInstructionGame(null);
+    setCurrentGame(gameId);
+    if (gameId === "memory") startMemory();
   };
 
   if (currentGame === "menu") {
@@ -247,8 +306,7 @@ const WellnessGames = () => {
               const Icon = game.icon;
               return (
                 <motion.div key={game.id} initial={{scale:0,rotate:-10}} animate={{scale:1,rotate:0}} transition={{delay:i*0.1}}>
-                  <Card className="cursor-pointer hover:scale-105 transition-all hover:shadow-2xl border-2 hover:border-primary"
-                    onClick={() => { setCurrentGame(game.id as GameType); if(game.id==="memory")startMemory(); }}>
+                  <Card className="cursor-pointer hover:scale-105 transition-all hover:shadow-2xl border-2 hover:border-primary" onClick={() => handlePlayClick(game)}>
                     <CardHeader className={`bg-gradient-to-br ${game.color} text-white rounded-t-lg`}>
                       <div className="flex items-center justify-between">
                         <Icon className="w-12 h-12" />
@@ -258,7 +316,7 @@ const WellnessGames = () => {
                     <CardContent className="pt-6">
                       <CardTitle className="text-xl mb-2">{game.title}</CardTitle>
                       <CardDescription className="text-base">{game.desc}</CardDescription>
-                      <Button className="w-full mt-4" size="lg"><Play className="w-4 h-4 mr-2" />Play Now</Button>
+                      <Button className="w-full mt-4" size="lg" onClick={() => handlePlayClick(game)}><Play className="w-4 h-4 mr-2" />Play Now</Button>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -266,6 +324,28 @@ const WellnessGames = () => {
             })}
           </div>
         </div>
+
+        {instructionGame && (
+          <Dialog open onOpenChange={() => setInstructionGame(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-2xl">
+                  <instructionGame.icon className="w-6 h-6" />
+                  {instructionGame.title}
+                </DialogTitle>
+                <DialogDescription className="pt-4 text-base">
+                  {instructionGame.instructions}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </DialogClose>
+                <Button onClick={() => startGame(instructionGame.id)}>Start Game</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
         <MobileBottomNav />
       </div>
     );

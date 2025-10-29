@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +14,16 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
+
 const AuthPage = () => {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: 'ease-in-out',
+      once: true,
+      offset: 10
+    });
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("signin");
   const [showPassword, setShowPassword] = useState(false);
@@ -401,7 +412,10 @@ const AuthPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div 
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4"
+      data-aos="fade-in"
+    >
       <div id="recaptcha-container"></div>
       {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden">
@@ -412,7 +426,11 @@ const AuthPage = () => {
       {/* Forgot Password Modal */}
       {showForgotPassword && <ForgotPasswordModal />}
 
-      <div className="relative w-full max-w-md">
+      <div 
+        className="relative w-full max-w-md"
+        data-aos="fade-up"
+        data-aos-delay="100"
+      >
         {/* Back to Home */}
         <Link 
           to="/" 
@@ -423,7 +441,11 @@ const AuthPage = () => {
         </Link>
 
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div 
+          className="text-center mb-8"
+          data-aos="fade-up"
+          data-aos-delay="200"
+        >
           <div className="w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
@@ -433,7 +455,11 @@ const AuthPage = () => {
           <p className="text-slate-600 mt-2">Your mental wellness journey starts here</p>
         </div>
 
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card 
+          className="shadow-xl border-0 bg-white/80 backdrop-blur-sm"
+          data-aos="fade-up"
+          data-aos-delay="300"
+        >
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-2xl font-bold text-slate-800">Welcome</CardTitle>
             <CardDescription className="text-slate-600">
@@ -442,8 +468,18 @@ const AuthPage = () => {
           </CardHeader>
           
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-lg">
+            <Tabs 
+              value={activeTab} 
+              onValueChange={setActiveTab} 
+              className="space-y-6"
+              data-aos="fade-up"
+              data-aos-delay="400"
+            >
+              <TabsList 
+                className="grid w-full grid-cols-2 bg-slate-100 p-1 rounded-lg"
+                data-aos="fade-up"
+                data-aos-delay="450"
+              >
                 <TabsTrigger 
                   value="signin" 
                   className={cn(
@@ -465,7 +501,11 @@ const AuthPage = () => {
               </TabsList>
 
               {/* Sign In Form */}
-              <TabsContent value="signin">
+              <TabsContent 
+                value="signin"
+                data-aos="fade-up"
+                data-aos-delay="500"
+              >
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-slate-700">Email</Label>
@@ -539,7 +579,11 @@ const AuthPage = () => {
               </TabsContent>
 
               {/* Sign Up Form */}
-              <TabsContent value="signup">
+              <TabsContent 
+                value="signup"
+                data-aos="fade-up"
+                data-aos-delay="500"
+              >
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-slate-700">Full Name</Label>
@@ -661,7 +705,11 @@ const AuthPage = () => {
             </Tabs>
 
             {/* Social Login */}
-            <div className="mt-6">
+            <div 
+            className="mt-6"
+            data-aos="fade-up"
+            data-aos-delay="600"
+          >
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-slate-200"></div>
@@ -671,7 +719,11 @@ const AuthPage = () => {
                 </div>
               </div>
 
-              <div className="grid gap-3 mt-4">
+              <div 
+              className="grid gap-3 mt-4"
+              data-aos="fade-up"
+              data-aos-delay="650"
+            >
                 <Button 
                   variant="outline" 
                   className="w-full border-slate-200 hover:bg-slate-50 text-slate-700"
@@ -693,7 +745,11 @@ const AuthPage = () => {
         </Card>
 
         {/* Privacy Notice */}
-        <div className="text-center mt-6 text-xs text-slate-500">
+        <div 
+        className="text-center mt-6 text-xs text-slate-500"
+        data-aos="fade-up"
+        data-aos-delay="700"
+      >
           <p>🔒 Your data is protected with end-to-end encryption</p>
           <p>HIPAA & GDPR compliant</p>
         </div>

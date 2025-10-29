@@ -594,6 +594,7 @@ const LandingPage = () => {
                 className="border-white/60 text-white bg-black/40 hover:bg-white/15 neon-border"
                 data-aos="zoom-in"
                 data-aos-delay="300"
+                onClick={() => window.location.href = '/about'}
               >
                 Learn More
               </Button>

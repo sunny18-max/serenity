@@ -116,6 +116,7 @@ app.post('/api/auth/signup', async (req, res) => {
       weekly_progress: [],
       insights: [],
       wellness_score: 0,
+      game_scores: {},
       streak: 0,
       assessments_count: 0,
       has_completed_initial_assessment: false,
@@ -415,10 +416,84 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
+// Submit game score
+app.post('/api/user/game-score', async (req, res) => {
+  const { uid, gameName, score } = req.body;
 
->>>>>>> 0064afd847729d2743564b0409a4ad35b59dc33e
+  if (!uid) {
+    return res.status(401).json({ error: 'User ID is required' });
+  }
+
+  if (!gameName || typeof score !== 'number') {
+    return res.status(400).json({ error: 'Game name and score are required' });
+  }
+
+  try {
+    const userRef = db.collection('users').doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    const previousHighScore = userData.game_scores?.[gameName] || 0;
+    const gameScores = userData.game_scores || {};
+    let isNewHighScore = false;
+
+    // Only update if the new score is higher
+    if (!gameScores[gameName] || score > gameScores[gameName]) {
+      gameScores[gameName] = score;
+      isNewHighScore = true;
+    }
+
+    // Create a notification for the insights/notifications section
+    const newInsight = {
+      title: isNewHighScore ? `New High Score in ${gameName}!` : `Game Complete: ${gameName}`,
+      description: `You scored ${score} points.`,
+      trend: isNewHighScore ? 'positive' : 'stable',
+      score: score,
+      date: new Date().toISOString()
+    };
+
+    const updatedInsights = [newInsight, ...(userData.insights || [])];
+
+    await userRef.update({ 
+      game_scores: gameScores,
+      insights: updatedInsights
+    });
+
+    res.json({ message: 'Score updated successfully', gameScores, insights: updatedInsights });
+  } catch (error) {
+    console.error('Error submitting game score:', error);
+    res.status(500).json({ error: 'Server error while submitting game score' });
+  }
+});
+
+// Submit wellness game stats
+app.post('/api/user/wellness-game-stats', async (req, res) => {
+  const { uid, stats } = req.body;
+
+  if (!uid) {
+    return res.status(401).json({ error: 'User ID is required' });
+  }
+
+  if (!stats) {
+    return res.status(400).json({ error: 'Game stats are required' });
+  }
+
+  try {
+    const gameStatsRef = db.collection('users').doc(uid).collection('wellness').doc('games');
+    await gameStatsRef.set(stats, { merge: true });
+
+    // Also update total points on the main user document for quick access
+    await db.collection('users').doc(uid).update({ total_points: stats.totalPoints });
+
+    res.json({ message: 'Game stats updated successfully', stats });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error while updating game stats' });
+  }
+});
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
