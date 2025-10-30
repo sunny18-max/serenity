@@ -14,17 +14,19 @@ import {
   Play,
   Bookmark,
   Share2,
-  Filter,
   ExternalLink,
-  Check
+  Check,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [savedResources, setSavedResources] = useState<number[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const categories = [
     { id: "all", label: "All Resources" },
@@ -319,6 +321,18 @@ const Resources = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
       <div className="container mx-auto px-6 py-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+
         {/* Header */}
         <motion.div 
           className="text-center mb-12"
@@ -336,27 +350,21 @@ const Resources = () => {
           </p>
         </motion.div>
 
-        {/* Search and Filter */}
+        {/* Search and Categories */}
         <motion.div 
           className="mb-8 space-y-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search resources..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filter
-            </Button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search resources..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
           {/* Categories */}

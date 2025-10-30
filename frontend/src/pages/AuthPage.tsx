@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Mail, Lock, User, ArrowLeft, Phone, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, sendEmailVerification } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,9 @@ const AuthPage = () => {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,11 +48,6 @@ const AuthPage = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Handle forgot password email input separately
-  const handleForgotPasswordEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForgotPasswordEmail(e.target.value);
   };
 
   // Check if user exists - with better fallback handling
@@ -130,6 +128,30 @@ const AuthPage = () => {
     }
   };
 
+  // Resend Verification Email
+  const handleResendVerification = async () => {
+    setIsResendingVerification(true);
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await sendEmailVerification(user);
+        toast({
+          title: "Verification email sent",
+          description: "Please check your inbox and spam folder.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Resend verification error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to resend verification email. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
   // Sign In
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,6 +188,19 @@ const AuthPage = () => {
       // Firebase sign in (this will work regardless of API status)
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
+      
+      // Check if email is verified
+      if (!user.emailVerified) {
+        setVerificationEmail(user.email || "");
+        setShowVerificationMessage(true);
+        setIsLoading(false);
+        toast({
+          title: "Email not verified",
+          description: "Please verify your email before signing in.",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Get user profile from Firestore
       try {
@@ -266,6 +301,15 @@ const AuthPage = () => {
 
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      
+      // Send email verification
+      try {
+        await sendEmailVerification(userCredential.user);
+      } catch (verificationError) {
+        console.error("Email verification error:", verificationError);
+        // Don't block signup if verification email fails
+      }
+      
       // Create user profile in Firestore
       await setDoc(doc(db, "users", userCredential.user.uid), {
         name: formData.name,
@@ -279,13 +323,21 @@ const AuthPage = () => {
         has_completed_initial_assessment: false,
         moods: [],
         last_login: null,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        emailVerified: false
       });
+      
+      // Show verification message
+      setVerificationEmail(formData.email);
+      setShowVerificationMessage(true);
+      
       toast({
-        title: "Success!",
-        description: "Account created successfully. Welcome to Serenity!"
+        title: "Account created!",
+        description: "Please check your email to verify your account."
       });
-      setTimeout(() => navigate("/dashboard"), 1500);
+      
+      // Sign out the user until they verify
+      await auth.signOut();
     } catch (error: any) {
       console.error("Sign up error:", error);
       let errorMessage = "Sign up failed. Please try again.";
@@ -353,63 +405,145 @@ const AuthPage = () => {
   };
 
   // Forgot Password Modal
-  const ForgotPasswordModal = () => (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Reset Your Password</CardTitle>
-          <CardDescription>
-            Enter your email address and we'll send you instructions to reset your password.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleForgotPassword} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="forgotPasswordEmail">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                <Input
-                  id="forgotPasswordEmail"
-                  type="email"
-                  placeholder="your@email.com"
-                  className="pl-10 bg-white border-slate-200 focus:border-indigo-400"
-                  value={forgotPasswordEmail}
-                  onChange={handleForgotPasswordEmailChange}
-                  required
-                />
+  const ForgotPasswordModal = () => {
+    if (!showForgotPassword) return null;
+    
+    return (
+      <div 
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowForgotPassword(false);
+            setForgotPasswordEmail("");
+          }
+        }}
+      >
+        <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <CardHeader>
+            <CardTitle>Reset Your Password</CardTitle>
+            <CardDescription>
+              Enter your email address and we'll send you instructions to reset your password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgotPasswordEmail">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    id="forgotPasswordEmail"
+                    name="forgotPasswordEmail"
+                    type="email"
+                    placeholder="your@email.com"
+                    className="pl-10 bg-white border-slate-200 focus:border-indigo-400"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    autoComplete="email"
+                    autoFocus
+                    required
+                    disabled={isForgotPasswordLoading}
+                  />
+                </div>
               </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setForgotPasswordEmail("");
+                  }}
+                  disabled={isForgotPasswordLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                  disabled={isForgotPasswordLoading || !forgotPasswordEmail}
+                >
+                  {isForgotPasswordLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : "Send Reset Link"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  // Email Verification Message Modal
+  const EmailVerificationMessageModal = () => {
+    if (!showVerificationMessage) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <CardHeader>
+            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-indigo-600" />
             </div>
+            <CardTitle className="text-center">Verify Your Email</CardTitle>
+            <CardDescription className="text-center">
+              We've sent a verification email to:
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center">
+              <p className="font-semibold text-indigo-600">{verificationEmail}</p>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-lg space-y-2 text-sm">
+              <p className="font-medium">Next steps:</p>
+              <ol className="list-decimal list-inside space-y-1 text-slate-600">
+                <li>Check your inbox for the verification email</li>
+                <li>Click the verification link in the email</li>
+                <li>Return here and sign in to your account</li>
+              </ol>
+            </div>
+
+            <div className="text-xs text-slate-500 text-center">
+              <p>Didn't receive the email? Check your spam folder or</p>
+            </div>
+
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => {
-                  setShowForgotPassword(false);
-                  setForgotPasswordEmail("");
-                }}
-                disabled={isForgotPasswordLoading}
+                onClick={handleResendVerification}
+                disabled={isResendingVerification}
               >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1"
-                disabled={isForgotPasswordLoading}
-              >
-                {isForgotPasswordLoading ? (
+                {isResendingVerification ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
+                    Resending...
                   </>
-                ) : "Send Reset Link"}
+                ) : "Resend Email"}
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => {
+                  setShowVerificationMessage(false);
+                  setActiveTab("signin");
+                }}
+              >
+                Go to Sign In
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <div 
@@ -425,6 +559,9 @@ const AuthPage = () => {
 
       {/* Forgot Password Modal */}
       {showForgotPassword && <ForgotPasswordModal />}
+
+      {/* Email Verification Message Modal */}
+      {showVerificationMessage && <EmailVerificationMessageModal />}
 
       <div 
         className="relative w-full max-w-md"

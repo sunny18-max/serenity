@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import { InteractiveHelpMap } from "@/components/InteractiveHelpMap";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { 
   Phone,
@@ -19,7 +21,8 @@ import {
   Users,
   Headphones,
   Mail,
-  Globe
+  Globe,
+  Map
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +144,7 @@ const copingStrategies = [
 const EmergencyHelp = () => {
   const [selectedHotline, setSelectedHotline] = useState<HotlineResource | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleCall = (phone: string) => {
     window.location.href = `tel:${phone}`;
@@ -148,6 +152,127 @@ const EmergencyHelp = () => {
 
   const handleText = (number: string) => {
     window.location.href = `sms:${number}`;
+  };
+
+  const downloadSafetyPlan = () => {
+    const safetyPlanContent = `MENTAL HEALTH SAFETY PLAN
+
+Date Created: ${new Date().toLocaleDateString()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. WARNING SIGNS
+   Identify thoughts, images, moods, situations, and behaviors that indicate a crisis may be developing:
+
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. INTERNAL COPING STRATEGIES
+   Things I can do on my own to take my mind off problems without contacting another person:
+
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. SOCIAL CONTACTS AND SETTINGS
+   People and social settings that provide distraction:
+
+   Name: ___________________________  Phone: _________________________
+   Name: ___________________________  Phone: _________________________
+   Name: ___________________________  Phone: _________________________
+
+   Places I can go:
+   • _________________________________________________________________
+   • _________________________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PEOPLE I CAN ASK FOR HELP
+   
+   Name: ___________________________  Phone: _________________________
+   Relationship: _____________________________________________________
+
+   Name: ___________________________  Phone: _________________________
+   Relationship: _____________________________________________________
+
+   Name: ___________________________  Phone: _________________________
+   Relationship: _____________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. PROFESSIONALS AND AGENCIES I CAN CONTACT
+
+   Therapist/Counselor: ______________________________________________
+   Phone: ___________________________  Available: ____________________
+
+   Doctor: ___________________________________________________________
+   Phone: ___________________________  Available: ____________________
+
+   Local Emergency Services: _________________________________________
+   Phone: ___________________________
+
+   Crisis Hotline: 988 Suicide & Crisis Lifeline
+   Phone: 988 (24/7)
+
+   Crisis Text Line: Text "HELLO" to 741741 (24/7)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. MAKING THE ENVIRONMENT SAFE
+
+   Steps I can take to make my environment safer:
+
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. REASONS FOR LIVING
+
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+   • _________________________________________________________________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REMEMBER:
+• Keep this plan in a place where you can access it easily
+• Share it with trusted friends, family, or your therapist
+• Review and update it regularly
+• In immediate danger, call 911 or go to the nearest emergency room
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Generated by Serenity Mental Health Wellness App
+${new Date().toLocaleString()}`;
+
+    const blob = new Blob([safetyPlanContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Safety-Plan-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Safety Plan Downloaded",
+      description: "Your safety plan template has been downloaded successfully.",
+    });
   };
 
   const getTypeColor = (type: string) => {
@@ -162,7 +287,7 @@ const EmergencyHelp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-background to-orange-50 dark:from-gray-900 dark:via-background dark:to-gray-800 pb-16 lg:pb-0">
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-5xl">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
         {/* Emergency Alert */}
         <Alert className="mb-6 border-red-500/50 bg-red-500/10">
           <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -200,9 +325,39 @@ const EmergencyHelp = () => {
           </Badge>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Crisis Hotlines */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Main Tabs */}
+        <Tabs defaultValue="map" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+            <TabsTrigger value="map" className="flex items-center gap-2">
+              <Map className="w-4 h-4" />
+              Map
+            </TabsTrigger>
+            <TabsTrigger value="hotlines" className="flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              Hotlines
+            </TabsTrigger>
+            <TabsTrigger value="coping" className="flex items-center gap-2">
+              <Heart className="w-4 h-4" />
+              Coping
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Map Tab */}
+          <TabsContent value="map" className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                <MapPin className="w-6 h-6 text-primary" />
+                Find Help Centers Worldwide
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Browse the interactive map to find mental health facilities near you or anywhere in the world
+              </p>
+              <InteractiveHelpMap />
+            </div>
+          </TabsContent>
+
+          {/* Hotlines Tab */}
+          <TabsContent value="hotlines" className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
                 <Phone className="w-6 h-6 text-primary" />
@@ -333,55 +488,58 @@ const EmergencyHelp = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </TabsContent>
 
-          {/* Immediate Coping Strategies */}
-          <div className="lg:col-span-1">
-            <Card className="shadow-medium border-primary/10 sticky top-8">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-energy" />
-                  Immediate Coping
-                </CardTitle>
-                <CardDescription>
-                  Try these while waiting for support
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          {/* Coping Tab */}
+          <TabsContent value="coping" className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                <Heart className="w-6 h-6 text-primary" />
+                Immediate Coping Strategies
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Try these techniques while waiting for support
+              </p>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {copingStrategies.map((strategy, index) => (
-                  <div key={index} className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                    <h3 className="font-semibold mb-1">{strategy.title}</h3>
-                    <p className="text-xs text-muted-foreground mb-3">{strategy.description}</p>
-                    <ol className="space-y-2">
-                      {strategy.steps.map((step, idx) => (
-                        <li key={idx} className="text-sm flex gap-2">
-                          <span className="text-primary font-medium">{idx + 1}.</span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
+                  <Card key={index} className="shadow-medium border-primary/10">
+                    <CardHeader>
+                      <CardTitle className="text-lg">{strategy.title}</CardTitle>
+                      <CardDescription>{strategy.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ol className="space-y-2">
+                        {strategy.steps.map((step, idx) => (
+                          <li key={idx} className="text-sm flex gap-2">
+                            <span className="text-primary font-medium">{idx + 1}.</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </CardContent>
+                  </Card>
                 ))}
+              </div>
 
-                <Alert className="border-primary/20 bg-primary/5">
-                  <Heart className="h-4 w-4 text-primary" />
-                  <AlertTitle className="text-sm">Remember</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    These feelings are temporary. You've gotten through difficult times before, and you can get through this too.
-                  </AlertDescription>
-                </Alert>
+              <Alert className="border-primary/20 bg-primary/5 mt-6">
+                <Heart className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-sm">Remember</AlertTitle>
+                <AlertDescription className="text-xs">
+                  These feelings are temporary. You've gotten through difficult times before, and you can get through this too.
+                </AlertDescription>
+              </Alert>
 
-                <Button 
-                  className="w-full bg-gradient-primary"
-                  onClick={() => navigate("/ai-therapist")}
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Talk to AI Companion
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              <Button 
+                className="w-full lg:w-auto bg-gradient-primary mt-4"
+                onClick={() => navigate("/ai-therapist")}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Talk to AI Companion
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Safety Plan Section */}
         <Card className="shadow-medium border-primary/10 mt-6">
@@ -415,7 +573,7 @@ const EmergencyHelp = () => {
                 </p>
               </div>
             </div>
-            <Button className="mt-4" variant="outline">
+            <Button className="mt-4" variant="outline" onClick={downloadSafetyPlan}>
               <Mail className="w-4 h-4 mr-2" />
               Download Safety Plan Template
             </Button>

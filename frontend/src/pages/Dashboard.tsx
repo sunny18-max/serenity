@@ -679,14 +679,6 @@ const Dashboard = () => {
                       <Button
                         variant="outline"
                         className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
-                        onClick={() => navigate("/ai-therapist")}
-                      >
-                        <Brain className="w-6 h-6 text-primary" />
-                        <span className="text-xs font-medium">AI Therapist</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
                         onClick={() => navigate("/mood-tracker")}
                       >
                         <Heart className="w-6 h-6 text-energy" />
@@ -739,6 +731,14 @@ const Dashboard = () => {
                       >
                         <Heart className="w-6 h-6 text-red-500" />
                         <span className="text-xs font-medium">Need Help?</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-24 flex-col gap-2 hover:bg-primary/10 hover:border-primary transition-all"
+                        onClick={() => navigate("/ai-therapist")}
+                      >
+                        <Brain className="w-6 h-6 text-primary" />
+                        <span className="text-xs font-medium">AI Therapist</span>
                       </Button>
                     </div>
                   </CardContent>

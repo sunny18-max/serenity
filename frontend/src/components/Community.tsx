@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, 
@@ -35,16 +41,24 @@ import { getMentalWellnessVideos, getLiveStreams, getMentalHealthDiscussions, fo
 import SpotifyPlayer from "@/components/SpotifyPlayer";
 import { motion, AnimatePresence } from "framer-motion";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import { NewDiscussionDialog } from "@/components/NewDiscussionDialog";
+import { DiscussionChatDialog } from "@/components/DiscussionChatDialog";
+import { SupportGroupDialog } from "@/components/SupportGroupDialog";
+import { NewSupportGroupDialog } from "@/components/NewSupportGroupDialog";
+import { auth, db } from "@/firebase";
+import { collection, query, orderBy, getDocs, doc, updateDoc, arrayUnion, arrayRemove, increment, onSnapshot } from "firebase/firestore";
 
 interface SupportGroup {
   id: string;
   name: string;
   description: string;
-  members: number;
+  memberCount: number;
+  members: string[];
   category: string;
   isAnonymous: boolean;
   moderator: string;
   tags: string[];
+  createdAt: any;
 }
 
 interface ChatMessage {
@@ -55,9 +69,21 @@ interface ChatMessage {
   isModerated: boolean;
 }
 
+interface FirebaseDiscussion {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  authorId: string;
+  authorName: string;
+  likes: number;
+  likedBy: string[];
+  comments: number;
+  createdAt: any;
+}
+
 const Community = () => {
   const [activeTab, setActiveTab] = useState("news");
-  const [selectedGroup, setSelectedGroup] = useState<SupportGroup | null>(null);
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([]);
@@ -65,9 +91,38 @@ const Community = () => {
   const [videos, setVideos] = useState<VideoContent[]>([]);
   const [liveStreams, setLiveStreams] = useState<VideoContent[]>([]);
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [firebaseDiscussions, setFirebaseDiscussions] = useState<FirebaseDiscussion[]>([]);
+  const [isLoadingDiscussions, setIsLoadingDiscussions] = useState(false);
+  const [supportGroups, setSupportGroups] = useState<SupportGroup[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterBy, setFilterBy] = useState("recent");
+  const [isNewDiscussionOpen, setIsNewDiscussionOpen] = useState(false);
+  const [isNewGroupOpen, setIsNewGroupOpen] = useState(false);
+  const [selectedDiscussion, setSelectedDiscussion] = useState<{ id: string; title: string } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<SupportGroup | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const loadDiscussionsFromFirebase = async () => {
+    setIsLoadingDiscussions(true);
+    try {
+      const discussionsQuery = query(
+        collection(db, "community_discussions"),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(discussionsQuery);
+      const loadedDiscussions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as FirebaseDiscussion[];
+      setFirebaseDiscussions(loadedDiscussions);
+    } catch (error) {
+      console.error("Error loading discussions:", error);
+    } finally {
+      setIsLoadingDiscussions(false);
+    }
+  };
 
   useEffect(() => {
     const loadContent = async () => {
@@ -80,15 +135,58 @@ const Community = () => {
       setVideos(getMentalWellnessVideos());
       setLiveStreams(getLiveStreams());
       setDiscussions(getMentalHealthDiscussions());
+      loadDiscussionsFromFirebase();
+      loadSupportGroupsFromFirebase();
     };
     loadContent();
   }, []);
 
-  const handleLikeDiscussion = (id: string) => {
-    toast({
-      title: "Liked!",
-      description: "Your support means a lot to the community.",
-    });
+  const handleLikeDiscussion = async (discussionId: string) => {
+    const user = auth.currentUser;
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to like discussions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const discussion = firebaseDiscussions.find(d => d.id === discussionId);
+      if (!discussion) return;
+
+      const discussionRef = doc(db, "community_discussions", discussionId);
+      const hasLiked = discussion.likedBy.includes(user.uid);
+
+      if (hasLiked) {
+        // Unlike
+        await updateDoc(discussionRef, {
+          likes: increment(-1),
+          likedBy: arrayRemove(user.uid)
+        });
+      } else {
+        // Like
+        await updateDoc(discussionRef, {
+          likes: increment(1),
+          likedBy: arrayUnion(user.uid)
+        });
+        toast({
+          title: "Liked!",
+          description: "Your support means a lot to the community.",
+        });
+      }
+
+      // Reload discussions
+      await loadDiscussionsFromFirebase();
+    } catch (error) {
+      console.error("Error liking discussion:", error);
+      toast({
+        title: "Error",
+        description: "Failed to like discussion.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Filter content based on search query
@@ -102,9 +200,34 @@ const Community = () => {
     discussion.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Filter and sort Firebase discussions
+  const filteredFirebaseDiscussions = firebaseDiscussions
+    .filter(discussion =>
+      discussion.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      discussion.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      discussion.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (filterBy === "recent") {
+        return b.createdAt?.seconds - a.createdAt?.seconds;
+      } else if (filterBy === "popular") {
+        return b.likes - a.likes;
+      } else if (filterBy === "discussed") {
+        return b.comments - a.comments;
+      }
+      return 0;
+    });
+
   const filteredVideos = videos.filter(video =>
     video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     video.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredSupportGroups = supportGroups.filter(group =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleShareDiscussion = (discussion: Discussion) => {
@@ -124,68 +247,25 @@ const Community = () => {
   };
 
 
-  const supportGroups: SupportGroup[] = [
-    {
-      id: "anxiety-support",
-      name: "Anxiety Support Circle",
-      description: "Safe space to discuss anxiety, share coping strategies, and support each other",
-      members: 234,
-      category: "Anxiety",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["Anxiety", "Coping", "Support"]
-    },
-    {
-      id: "depression-warriors",
-      name: "Depression Warriors",
-      description: "Community for those battling depression to share experiences and find hope",
-      members: 189,
-      category: "Depression",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["Depression", "Recovery", "Hope"]
-    },
-    {
-      id: "stress-management",
-      name: "Stress Management Hub",
-      description: "Learn and share techniques for managing daily stress and overwhelm",
-      members: 312,
-      category: "Stress",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["Stress", "Mindfulness", "Balance"]
-    },
-    {
-      id: "lgbtq-wellness",
-      name: "LGBTQ+ Wellness Space",
-      description: "Supportive community for LGBTQ+ mental health and wellness",
-      members: 156,
-      category: "Identity",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["LGBTQ+", "Identity", "Support"]
-    },
-    {
-      id: "student-support",
-      name: "Student Mental Health",
-      description: "Support for students dealing with academic stress and mental health",
-      members: 278,
-      category: "Students",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["Students", "Academic", "Stress"]
-    },
-    {
-      id: "new-parents",
-      name: "New Parents Wellness",
-      description: "Mental health support for new and expecting parents",
-      members: 145,
-      category: "Parenting",
-      isAnonymous: true,
-      moderator: "AI + Human Moderators",
-      tags: ["Parenting", "Postpartum", "Support"]
+  const loadSupportGroupsFromFirebase = async () => {
+    setIsLoadingGroups(true);
+    try {
+      const groupsQuery = query(
+        collection(db, "support_groups"),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(groupsQuery);
+      const loadedGroups = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as SupportGroup[];
+      setSupportGroups(loadedGroups);
+    } catch (error) {
+      console.error("Error loading support groups:", error);
+    } finally {
+      setIsLoadingGroups(false);
     }
-  ];
+  };
 
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return;
@@ -231,6 +311,18 @@ const Community = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid pb-16 lg:pb-0">
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+
         {/* Title Section */}
         <motion.div 
           className="text-center mb-12"
@@ -302,14 +394,32 @@ const Community = () => {
               className="pl-10"
             />
           </div>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setIsNewDiscussionOpen(true)}
+          >
             <Plus className="w-4 h-4" />
             New Discussion
           </Button>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Filter className="w-4 h-4" />
-            Filter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                {filterBy === "recent" ? "Recent" : filterBy === "popular" ? "Popular" : "Most Discussed"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setFilterBy("recent")}>
+                Recent
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterBy("popular")}>
+                Most Liked
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilterBy("discussed")}>
+                Most Discussed
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </motion.div>
 
         {/* Content */}
@@ -382,77 +492,107 @@ const Community = () => {
 
         {activeTab === "discussions" && (
           <div className="space-y-6">
-            {filteredDiscussions.length === 0 ? (
+            {isLoadingDiscussions ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-6 bg-muted rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-muted rounded w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-4 bg-muted rounded w-full mb-2" />
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredFirebaseDiscussions.length === 0 ? (
               <div className="text-center py-12">
                 <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No discussions found</h3>
-                <p className="text-muted-foreground">Try adjusting your search query</p>
+                <p className="text-muted-foreground">
+                  {searchQuery ? "Try adjusting your search query" : "Be the first to start a discussion!"}
+                </p>
+                <Button 
+                  className="mt-4"
+                  onClick={() => setIsNewDiscussionOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Start Discussion
+                </Button>
               </div>
             ) : (
-              filteredDiscussions.map(discussion => (
-              <Card key={discussion.id} className="hover:shadow-lg transition-all duration-300 cursor-pointer" onClick={() => window.open(discussion.url, "_blank")}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-2 hover:text-primary transition-colors">{discussion.title}</CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                        <span>By {discussion.author}</span>
-                        <span>{formatTimestamp(discussion.timestamp)}</span>
-                        <Badge variant="outline" className="text-xs">{discussion.platform}</Badge>
+              filteredFirebaseDiscussions.map(discussion => {
+                const user = auth.currentUser;
+                const hasLiked = user && discussion.likedBy.includes(user.uid);
+                const timeAgo = discussion.createdAt?.seconds 
+                  ? formatTimestamp(new Date(discussion.createdAt.seconds * 1000).toISOString())
+                  : "Just now";
+
+                return (
+                  <Card key={discussion.id} className="hover:shadow-lg transition-all duration-300">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg mb-2">{discussion.title}</CardTitle>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                            <div className="flex items-center gap-1">
+                              <UserCircle className="w-4 h-4" />
+                              <span>{discussion.authorName}</span>
+                            </div>
+                            <span>{timeAgo}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3 whitespace-pre-wrap">{discussion.content}</p>
+                          {discussion.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {discussion.tags.map(tag => (
+                                <Badge key={tag} variant="secondary" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{discussion.content}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {discussion.tags.map(tag => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <button
+                            className="flex items-center gap-1 hover:text-primary transition-colors"
+                            onClick={() => setSelectedDiscussion({ id: discussion.id, title: discussion.title })}
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>{discussion.comments} comments</span>
+                          </button>
+                          <div className="flex items-center gap-1">
+                            <Heart className={cn("w-4 h-4", hasLiked && "fill-red-500 text-red-500")} />
+                            <span>{discussion.likes} likes</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedDiscussion({ id: discussion.id, title: discussion.title })}
+                          >
+                            <MessageCircle className="w-4 h-4 mr-1" />
+                            Join Chat
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant={hasLiked ? "default" : "outline"}
+                            onClick={() => handleLikeDiscussion(discussion.id)}
+                          >
+                            <Heart className={cn("w-4 h-4", hasLiked && "fill-current")} />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{discussion.replies} replies</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        <span>{discussion.likes} likes</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLikeDiscussion(discussion.id);
-                        }}
-                      >
-                        <Heart className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShareDiscussion(discussion);
-                        }}
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" onClick={(e) => e.stopPropagation()}>
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        View on Reddit
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         )}
@@ -569,209 +709,151 @@ const Community = () => {
           </div>
         )}
 
-        {activeTab === "groups" && !selectedGroup && (
+        {activeTab === "groups" && (
           <div>
             <Card className="mb-6 bg-primary/5 border-primary/20">
               <CardContent className="pt-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold mb-2 flex items-center gap-2">
-                      Anonymous & Safe
-                      <Badge variant="outline" className="text-xs">
-                        <Lock className="w-3 h-3 mr-1" />
-                        AI Moderated
-                      </Badge>
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      All support groups are anonymous and moderated by AI to ensure a safe, positive environment. 
-                      Toxic behavior is automatically detected and prevented.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {supportGroups.map(group => (
-                <Card 
-                  key={group.id} 
-                  className="hover:shadow-glow transition-all duration-300 cursor-pointer border-primary/10"
-                  onClick={() => handleJoinGroup(group)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center">
-                        <Users className="w-6 h-6 text-white" />
-                      </div>
-                      {group.isAnonymous && (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2 flex items-center gap-2">
+                        Anonymous & Safe
                         <Badge variant="outline" className="text-xs">
                           <Lock className="w-3 h-3 mr-1" />
-                          Anonymous
+                          AI Moderated
                         </Badge>
-                      )}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        All support groups are anonymous and moderated by AI to ensure a safe, positive environment.
+                      </p>
                     </div>
-                    <CardTitle className="text-lg">{group.name}</CardTitle>
-                    <CardDescription>{group.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="w-4 h-4" />
-                      <span>{group.members} members</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Shield className="w-4 h-4" />
-                      <span>{group.moderator}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {group.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <Button className="w-full mt-4 bg-gradient-primary">
-                      Join Group
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                  </div>
+                  <Button
+                    onClick={() => setIsNewGroupOpen(true)}
+                    className="bg-gradient-primary flex-shrink-0"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Group
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-        {activeTab === "groups" && selectedGroup && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Group Info Sidebar */}
-            <Card className="lg:col-span-1 shadow-medium border-primary/10">
-              <CardHeader>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedGroup(null)}
-                  className="mb-4"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Groups
+            {isLoadingGroups ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-12 w-12 bg-muted rounded-full mb-2" />
+                      <div className="h-6 bg-muted rounded w-3/4 mb-2" />
+                      <div className="h-4 bg-muted rounded w-full" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-4 bg-muted rounded w-2/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredSupportGroups.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No support groups found</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery ? "Try adjusting your search query" : "Be the first to create a support group!"}
+                </p>
+                <Button onClick={() => setIsNewGroupOpen(true)} className="bg-gradient-primary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Support Group
                 </Button>
-                <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-8 h-8 text-white" />
-                </div>
-                <CardTitle className="text-center">{selectedGroup.name}</CardTitle>
-                <CardDescription className="text-center">
-                  {selectedGroup.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-3 bg-primary/5 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Safe Space</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    AI moderation ensures respectful communication
-                  </p>
-                </div>
-                <div className="p-3 bg-primary/5 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Lock className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium">Anonymous</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Your identity is protected
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Members</span>
-                    <span className="font-medium">{selectedGroup.members}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Category</span>
-                    <Badge variant="secondary">{selectedGroup.category}</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Chat Area */}
-            <Card className="lg:col-span-3 shadow-medium border-primary/10">
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Group Chat</CardTitle>
-                    <CardDescription>
-                      {selectedGroup.members} members • Active now
-                    </CardDescription>
-                  </div>
-                  <Badge className="bg-green-500 text-white">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Moderated
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[500px] p-6">
-                  <div className="space-y-4">
-                    {chatMessages.map(msg => (
-                      <div key={msg.id} className="flex gap-3">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                          <UserCircle className="w-5 h-5 text-primary" />
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredSupportGroups.map(group => (
+                  <Card
+                    key={group.id}
+                    className="hover:shadow-glow transition-all duration-300 cursor-pointer border-primary/10"
+                    onClick={() => setSelectedGroup(group)}
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium">{msg.user}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {msg.isModerated && (
-                              <Badge variant="outline" className="text-xs">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Verified
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-sm bg-muted/50 rounded-lg p-3">{msg.message}</p>
-                        </div>
+                        {group.isAnonymous && (
+                          <Badge variant="outline" className="text-xs">
+                            <Lock className="w-3 h-3 mr-1" />
+                            Anonymous
+                          </Badge>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-                <div className="border-t p-4">
-                  <div className="flex gap-2">
-                    <Textarea
-                      placeholder="Share your thoughts... (Be kind and supportive)"
-                      value={chatMessage}
-                      onChange={(e) => setChatMessage(e.target.value)}
-                      className="min-h-[60px]"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={!chatMessage.trim()}
-                      className="bg-gradient-primary"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    Messages are monitored by AI to maintain a safe environment
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                      <CardTitle className="text-lg">{group.name}</CardTitle>
+                      <CardDescription>{group.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="w-4 h-4" />
+                        <span>{group.memberCount || 0} members</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Shield className="w-4 h-4" />
+                        <span>{group.moderator}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {group.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      <Button className="w-full mt-4 bg-gradient-primary">
+                        View Group
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
       </div>
       <MobileBottomNav />
+      
+      {/* Dialogs */}
+      <NewDiscussionDialog
+        open={isNewDiscussionOpen}
+        onOpenChange={setIsNewDiscussionOpen}
+        onDiscussionCreated={loadDiscussionsFromFirebase}
+      />
+      
+      {selectedDiscussion && (
+        <DiscussionChatDialog
+          open={!!selectedDiscussion}
+          onOpenChange={(open) => !open && setSelectedDiscussion(null)}
+          discussionId={selectedDiscussion.id}
+          discussionTitle={selectedDiscussion.title}
+        />
+      )}
+      
+      {selectedGroup && (
+        <SupportGroupDialog
+          open={!!selectedGroup}
+          onOpenChange={(open) => !open && setSelectedGroup(null)}
+          groupId={selectedGroup.id}
+          groupName={selectedGroup.name}
+          groupDescription={selectedGroup.description}
+          isAnonymous={selectedGroup.isAnonymous}
+        />
+      )}
+      
+      <NewSupportGroupDialog
+        open={isNewGroupOpen}
+        onOpenChange={setIsNewGroupOpen}
+        onGroupCreated={loadSupportGroupsFromFirebase}
+      />
     </div>
   );
 };

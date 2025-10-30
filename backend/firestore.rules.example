@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Community Discussions
+    match /community_discussions/{discussionId} {
+      // Anyone can read discussions
+      allow read: if true;
+      
+      // Only authenticated users can create discussions
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 1000
+        && request.resource.data.tags is list
+        && request.resource.data.tags.size() <= 5
+        && request.resource.data.likes == 0
+        && request.resource.data.likedBy.size() == 0
+        && request.resource.data.comments == 0;
+      
+      // Users can update discussions for likes/comments
+      // Only author can update title/content
+      allow update: if request.auth != null
+        && (
+          // Author can update their own discussion
+          resource.data.authorId == request.auth.uid
+          // Anyone can update likes and likedBy
+          || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'likedBy', 'comments', 'updatedAt'])
+        );
+      
+      // Only author can delete their discussion
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+    
+    // User profiles
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // AI Chat history
+    match /users/{userId}/ai_chats/{chatId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Mood entries
+    match /users/{userId}/moods/{moodId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Journal entries
+    match /users/{userId}/journals/{journalId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Assessments
+    match /users/{userId}/assessments/{assessmentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Goals
+    match /users/{userId}/goals/{goalId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
