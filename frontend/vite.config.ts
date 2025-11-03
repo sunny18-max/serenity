@@ -13,14 +13,28 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "::",
       port: 8080,
-      // 👇 Add this section to allow Render backend host
-      allowedHosts: ["serenity-s1io.onrender.com"],
-      // Optional: If you use proxy for API calls in local dev
+      // Allow all hosts in development
+      host: true,
+      // Configure proxy for development
       proxy: {
-        "/api": {
-          target: "https://serenity-s1io.onrender.com",
+        '/api': {
+          target: process.env.VITE_BACKEND_API_URL || 'http://localhost:3001',
           changeOrigin: true,
-          secure: true,
+          secure: process.env.NODE_ENV === 'production',
+          rewrite: (path) => path.replace(/^\/api/, ''),
+          // Add CORS headers
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.error('Proxy error:', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Sending Request to the Target:', {
+                method: req.method,
+                url: req.url,
+                headers: req.headers,
+              });
+            });
+          },
         },
       },
     },
