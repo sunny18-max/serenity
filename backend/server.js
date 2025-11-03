@@ -36,6 +36,15 @@ if (!admin.apps.length) {
       console.log('Firebase Admin SDK initialized with service account key file');
     } else {
       // Fallback: Try using environment variables
+      const requiredEnv = ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'];
+      const missingEnv = requiredEnv.filter(key => !process.env[key]);
+
+      if (missingEnv.length > 0) {
+        throw new Error(
+          `Firebase Admin SDK initialization failed. Missing environment variables: ${missingEnv.join(', ')}. Please set them in your deployment environment.`
+        );
+      }
+
       const serviceAccount = {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID,
