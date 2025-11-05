@@ -7,6 +7,7 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 let genAI: GoogleGenerativeAI | null = null;
 
 if (API_KEY) {
+  console.log("Gemini AI Initialized");
   genAI = new GoogleGenerativeAI(API_KEY);
 }
 
@@ -48,6 +49,7 @@ export const generateAIResponse = async (
 ): Promise<string> => {
   // Fallback if no API key
   if (!genAI || !API_KEY) {
+    console.warn("VITE_GEMINI_API_KEY is not set. Using fallback responses for AI Therapist.");
     return generateFallbackResponse(userMessage);
   }
 
@@ -96,47 +98,36 @@ const generateFallbackResponse = (userMessage: string): string => {
     return "I'm really concerned about what you're sharing. Please reach out to a crisis helpline immediately:\n\n• National Suicide Prevention Lifeline: 988\n• Crisis Text Line: Text HOME to 741741\n• International Association for Suicide Prevention: https://www.iasp.info/resources/Crisis_Centres/\n\nYour life matters, and there are people who want to help you right now.";
   }
 
-  // Anxiety-related
-  if (
-    lowerText.includes("anxiety") ||
-    lowerText.includes("anxious") ||
-    lowerText.includes("worried") ||
-    lowerText.includes("panic")
-  ) {
-    return "I hear that you're experiencing anxiety. That can feel really overwhelming. One helpful CBT technique is to challenge anxious thoughts by asking yourself: 'What evidence do I have for this worry? What's the worst that could happen, and could I handle it?' Would you like to explore what specific thoughts are contributing to your anxiety?";
-  }
+  const responses = {
+    anxiety: "I hear that you're experiencing anxiety. That can feel really overwhelming. One helpful CBT technique is to challenge anxious thoughts by asking yourself: 'What evidence do I have for this worry? What's the worst that could happen, and could I handle it?' Would you like to explore what specific thoughts are contributing to your anxiety?",
+    depression: "Thank you for sharing that with me. Depression can make everything feel heavier. In CBT, we recognize that our thoughts, feelings, and behaviors are all connected. Sometimes when we're feeling down, our thoughts become more negative than the situation warrants. What's one specific thought that's been troubling you? Let's examine it together.",
+    stress: "It sounds like you're dealing with a lot right now. When we feel overwhelmed, it can help to break things down into smaller, manageable pieces. What's one specific thing that's causing you stress? Let's work on that together and develop a plan to address it.",
+    sleep: "Sleep difficulties can really impact our wellbeing. CBT for insomnia focuses on building healthy sleep habits and addressing thoughts that interfere with rest. What's your current sleep routine like? Are there specific worries keeping you awake?",
+    relationship: "Relationships can be complex and challenging. In CBT, we look at how our interpretations of others' behaviors affect our emotions. Can you tell me more about what's happening? What thoughts go through your mind in these situations?",
+    gratitude: "That's wonderful to hear! Focusing on positive feelings and gratitude can be a powerful part of a wellness journey. What's one thing you're feeling particularly happy about today?",
+    greeting: "Hello! I'm Serenity, your AI companion. I'm here to listen and support you using principles from Cognitive Behavioral Therapy. What's on your mind today?",
+  };
 
-  // Depression-related
-  if (
-    lowerText.includes("depress") ||
-    lowerText.includes("sad") ||
-    lowerText.includes("hopeless") ||
-    lowerText.includes("down")
-  ) {
-    return "Thank you for sharing that with me. Depression can make everything feel heavier. In CBT, we recognize that our thoughts, feelings, and behaviors are all connected. Sometimes when we're feeling down, our thoughts become more negative than the situation warrants. What's one specific thought that's been troubling you? Let's examine it together.";
+  if (lowerText.includes("anxiety") || lowerText.includes("anxious") || lowerText.includes("worried") || lowerText.includes("panic")) {
+    return responses.anxiety;
   }
-
-  // Stress-related
-  if (
-    lowerText.includes("stress") ||
-    lowerText.includes("overwhelm") ||
-    lowerText.includes("too much")
-  ) {
-    return "It sounds like you're dealing with a lot right now. When we feel overwhelmed, it can help to break things down into smaller, manageable pieces. What's one specific thing that's causing you stress? Let's work on that together and develop a plan to address it.";
+  if (lowerText.includes("depress") || lowerText.includes("sad") || lowerText.includes("hopeless") || lowerText.includes("down")) {
+    return responses.depression;
   }
-
-  // Sleep issues
+  if (lowerText.includes("stress") || lowerText.includes("overwhelm") || lowerText.includes("too much")) {
+    return responses.stress;
+  }
   if (lowerText.includes("sleep") || lowerText.includes("insomnia")) {
-    return "Sleep difficulties can really impact our wellbeing. CBT for insomnia focuses on building healthy sleep habits and addressing thoughts that interfere with rest. What's your current sleep routine like? Are there specific worries keeping you awake?";
+    return responses.sleep;
   }
-
-  // Relationship issues
-  if (
-    lowerText.includes("relationship") ||
-    lowerText.includes("friend") ||
-    lowerText.includes("family")
-  ) {
-    return "Relationships can be complex and challenging. In CBT, we look at how our interpretations of others' behaviors affect our emotions. Can you tell me more about what's happening? What thoughts go through your mind in these situations?";
+  if (lowerText.includes("relationship") || lowerText.includes("friend") || lowerText.includes("family")) {
+    return responses.relationship;
+  }
+  if (lowerText.includes("happy") || lowerText.includes("grateful") || lowerText.includes("thank you")) {
+    return responses.gratitude;
+  }
+  if (lowerText.includes("hello") || lowerText.includes("hi") || lowerText.includes("hey")) {
+    return responses.greeting;
   }
 
   // General supportive responses
@@ -145,6 +136,7 @@ const generateFallbackResponse = (userMessage: string): string => {
     "Thank you for sharing that. I'm here to support you. What would be most helpful for us to focus on right now?",
     "I hear you. It takes courage to talk about these things. What specific aspect of this would you like to work through?",
     "That sounds challenging. In CBT, we often find that examining our thoughts can help us understand our feelings better. What thoughts have been going through your mind about this?",
+    "I'm listening. It's brave of you to share. How can I best support you right now?",
   ];
 
   return generalResponses[Math.floor(Math.random() * generalResponses.length)];

@@ -13,11 +13,34 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'https://serenity-s1io.onrender.com',
+  'https://serenity-frontend-jade.vercel.app/',
+  'https://serenity-plum-gamma.vercel.app/'
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://serenity-phi-plum.vercel.app/'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+      console.warn(msg);
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 app.use(bodyParser.json());
 
 // Initialize Firebase Admin SDK with service account key file
@@ -36,6 +59,15 @@ if (!admin.apps.length) {
       console.log('Firebase Admin SDK initialized with service account key file');
     } else {
       // Fallback: Try using environment variables
+      const requiredEnv = ['FIREBASE_PROJECT_ID', 'FIREBASE_PRIVATE_KEY', 'FIREBASE_CLIENT_EMAIL'];
+      const missingEnv = requiredEnv.filter(key => !process.env[key]);
+
+      if (missingEnv.length > 0) {
+        throw new Error(
+          `Firebase Admin SDK initialization failed. Missing environment variables: ${missingEnv.join(', ')}. Please set them in your deployment environment.`
+        );
+      }
+
       const serviceAccount = {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID,

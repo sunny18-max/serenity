@@ -53,18 +53,21 @@ const AuthPage = () => {
   // Check if user exists - with better fallback handling
   const checkUserExists = async (email: string): Promise<{ exists: boolean; uid?: string }> => {
     try {
-      const API_URL = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:3001"; // Use environment variable
+      const API_URL = import.meta.env.VITE_BACKEND_API_URL || 'https://serenity-s1io.onrender.com';
+      
       const checkRes = await fetch(`${API_URL}/api/auth/check-user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: 'include', // Include credentials for CORS
         body: JSON.stringify({ email }),
       });
       
       if (checkRes.ok) {
         return await checkRes.json();
       } else {
+        console.error('API Error:', await checkRes.text());
         throw new Error(`API returned ${checkRes.status}`);
       }
     } catch (error) {
