@@ -53,7 +53,13 @@ const AuthPage = () => {
   // Check if user exists - with better fallback handling
   const checkUserExists = async (email: string): Promise<{ exists: boolean; uid?: string }> => {
     try {
+<<<<<<< HEAD
       const API_URL = import.meta.env.VITE_BACKEND_API_URL || 'https://serenity-s1io.onrender.com';
+=======
+      // Use relative URL in production, full URL in development
+      const isProduction = import.meta.env.PROD;
+      const API_URL = isProduction ? '' : (import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001');
+>>>>>>> 2dd3a54cb1bd1285a1b0ef5ff51e5e317ca93315
       
       const checkRes = await fetch(`${API_URL}/api/auth/check-user`, {
         method: "POST",

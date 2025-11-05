@@ -6,7 +6,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+<<<<<<< HEAD
     "dev": "node --watch server.js",
+=======
+    "dev": "nodemon server.js",
+>>>>>>> 2dd3a54cb1bd1285a1b0ef5ff51e5e317ca93315
     "build": "echo \"No build step required for backend\""
   },
   "dependencies": {
