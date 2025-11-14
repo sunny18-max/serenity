@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => {
     base: '/',
     envDir: path.resolve(__dirname, '..'), // Look for .env in parent directory
     server: {
-      host: "::",
       port: 8080,
       // Allow all hosts in development
       host: true,

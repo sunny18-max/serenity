@@ -1,11 +1,24 @@
-
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Heart, Shield, Users, Target, Star, TrendingUp, CheckCircle,ArrowLeft, Sparkles } from "lucide-react";
+import { Brain, Heart, Shield, Users, Target, Star, TrendingUp, CheckCircle, ArrowLeft, Sparkles, Zap, Globe, Lock, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import AOS from 'aos';
+import 'aos/dist/aos.css';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const About = () => {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: 'ease-out-cubic',
+      once: true,
+      mirror: false,
+      offset: 50
+    });
+  }, []);
+
   const features = [
     {
       icon: Brain,
@@ -40,7 +53,7 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -50,13 +63,16 @@ const About = () => {
               </div>
               <h1 className="text-xl font-cursive font-bold text-gradient-primary">Serenity</h1>
             </div>
-            <Link 
-              to="/" 
-              className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
+            <div className="flex items-center space-x-3">
+              <ThemeToggle />
+              <Link 
+                to="/" 
+                className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -64,11 +80,11 @@ const About = () => {
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/10 border-primary/30 text-primary">
+          <div className="text-center mb-16" data-aos="fade-up">
+            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/10 border-primary/30 text-primary neon-text dark:bg-primary/20 dark:border-primary/50 dark:text-primary">
               🧠 About Serenity
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
               Revolutionizing
               <span className="text-gradient-primary block font-cursive">Mental Healthcare</span>
             </h1>
@@ -79,13 +95,13 @@ const About = () => {
           </div>
 
           {/* Mission Statement */}
-          <Card className="mb-16 p-8 bg-gradient-calm text-white">
+          <Card className="mb-16 p-8 bg-gradient-calm text-white holographic-card" data-aos="zoom-in" data-aos-delay="100">
             <div className="text-center">
-              <div className="w-20 h-20 bg-white/25 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-white/25 rounded-full flex items-center justify-center mx-auto mb-6 glow-effect">
                 <Heart className="w-10 h-10" />
               </div>
               <h2 className="text-3xl font-serif font-bold mb-4">Our Mission</h2>
-              <p className="text-lg opacity-90 max-w-2xl mx-auto">
+              <p className="text-lg opacity-90 max-w-2xl mx-auto leading-relaxed">
                 To break down barriers in mental healthcare by providing accessible, evidence-based screening tools 
                 that empower individuals to understand, track, and improve their mental wellbeing with privacy and dignity.
               </p>
@@ -94,14 +110,19 @@ const About = () => {
 
           {/* Key Features */}
           <div className="mb-16">
-            <h2 className="text-3xl font-serif font-bold text-center mb-12">
+            <h2 className="text-3xl font-serif font-bold text-center mb-12" data-aos="fade-up">
               Why Choose <span className="text-gradient-primary">Serenity?</span>
             </h2>
             <div className="grid md:grid-cols-2 gap-8">
               {features.map((feature, index) => (
-                <Card key={index} className="team-card group">
+                <Card 
+                  key={index} 
+                  className="team-card group hover:shadow-medium hover:-translate-y-2 transition-all duration-300"
+                  data-aos="fade-up"
+                  data-aos-delay={index * 100}
+                >
                   <CardHeader>
-                    <div className={`w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <div className={`w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 glow-effect`}>
                       <feature.icon className={`w-6 h-6 ${feature.color}`} />
                     </div>
                     <CardTitle className="text-xl font-serif">{feature.title}</CardTitle>
@@ -118,44 +139,49 @@ const About = () => {
 
           {/* Statistics */}
           <div className="mb-16">
-            <h2 className="text-3xl font-serif font-bold text-center mb-12">
+            <h2 className="text-3xl font-serif font-bold text-center mb-12" data-aos="fade-up">
               The Mental Health <span className="text-gradient-primary">Crisis</span>
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               {stats.map((stat, index) => (
-                <Card key={index} className="text-center p-6 hover:shadow-medium transition-all duration-300">
-                  <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <Card 
+                  key={index} 
+                  className="text-center p-6 hover:shadow-medium hover:-translate-y-2 transition-all duration-300 border-0 bg-card/70 backdrop-blur-sm"
+                  data-aos="zoom-in"
+                  data-aos-delay={index * 100}
+                >
+                  <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4 glow-effect">
                     <stat.icon className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-primary mb-2">{stat.value}</h3>
-                  <p className="text-muted-foreground">{stat.label}</p>
+                  <p className="text-muted-foreground leading-relaxed">{stat.label}</p>
                 </Card>
               ))}
             </div>
           </div>
 
           {/* Technology */}
-          <Card className="mb-16">
+          <Card className="mb-16 border-0 bg-card/70 backdrop-blur-sm" data-aos="fade-up">
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-serif font-bold mb-4">
                   Built with <span className="text-gradient-primary">Modern Technology</span>
                 </h2>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-muted-foreground max-w-2xl mx-auto leading-relaxed">
                   Serenity leverages cutting-edge technology to provide a seamless, secure, and effective mental health platform.
                 </p>
               </div>
               
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { name: "React", description: "Modern frontend framework" },
-                  { name: "TypeScript", description: "Type-safe development" },
-                  { name: "Tailwind CSS", description: "Beautiful, responsive design" },
-                  { name: "Supabase", description: "Secure backend & database" }
+                  { name: "React", description: "Modern frontend framework", icon: Zap },
+                  { name: "TypeScript", description: "Type-safe development", icon: Brain },
+                  { name: "Tailwind CSS", description: "Beautiful, responsive design", icon: Sparkles },
+                  { name: "Firebase", description: "Secure backend & database", icon: Lock }
                 ].map((tech, index) => (
-                  <div key={index} className="text-center">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <Brain className="w-6 h-6 text-primary" />
+                  <div key={index} className="text-center group" data-aos="zoom-in" data-aos-delay={index * 100}>
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform duration-300">
+                      <tech.icon className="w-6 h-6 text-primary" />
                     </div>
                     <h4 className="font-semibold mb-1">{tech.name}</h4>
                     <p className="text-sm text-muted-foreground">{tech.description}</p>
@@ -166,18 +192,21 @@ const About = () => {
           </Card>
 
           {/* Call to Action */}
-          <div className="text-center">
-            <Card className="p-8 bg-gradient-hero text-white">
+          <div className="text-center" data-aos="zoom-in" data-aos-delay="200">
+            <Card className="p-8 bg-gradient-hero text-white holographic-card">
               <h2 className="text-3xl font-serif font-bold mb-4">Ready to Start Your Journey?</h2>
-              <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto">
+              <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto leading-relaxed">
                 Take the first step towards better mental health. Join thousands who trust Serenity 
                 for their mental wellness journey.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" variant="secondary" asChild>
-                  <Link to="/auth">Get Started Today</Link>
+                <Button size="lg" variant="secondary" className="btn-enhanced btn-glow" asChild>
+                  <Link to="/auth">
+                    Get Started Today
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Link>
                 </Button>
-                <Button size="lg" variant="outline" className="border-white/60 text-white bg-black/40 hover:bg-white/15 neon-border" asChild>
+                <Button size="lg" variant="outline" className="border-white/60 text-white bg-black/40 hover:bg-white/15 btn-enhanced" asChild>
                   <Link to="/contact">Contact Our Team</Link>
                 </Button>
               </div>

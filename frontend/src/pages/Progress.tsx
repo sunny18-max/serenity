@@ -254,41 +254,43 @@ const Progress = () => {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <Badge className="mb-2 px-3 py-1 bg-primary/10 border-primary/30">
+              <Badge className="mb-2 px-3 py-1 bg-primary/20 border-primary/50 text-primary dark:bg-primary/30 dark:border-primary/60 dark:text-primary">
                 <Sparkles className="w-3 h-3 mr-1" />
                 Your Journey
               </Badge>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Progress Reports
               </h1>
-              <p className="text-muted-foreground">Comprehensive view of your mental health journey</p>
+              <p className="text-sm sm:text-base text-muted-foreground">Comprehensive view of your mental health journey</p>
             </div>
           </div>
 
           <motion.div 
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 flex-wrap"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <Button variant="outline" onClick={generatePDFReport} className="flex items-center gap-2">
+            <Button variant="outline" onClick={generatePDFReport} className="flex items-center gap-2 text-xs sm:text-sm">
               <Download className="w-4 h-4" />
-              Export PDF
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">PDF</span>
             </Button>
-            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleShare} className="flex items-center gap-2 text-xs sm:text-sm">
               <Share2 className="w-4 h-4" />
-              Share
+              <span className="hidden sm:inline">Share</span>
+              <span className="sm:hidden">Share</span>
             </Button>
           </motion.div>
         </motion.div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8">
           {[
-            { icon: BarChart3, value: assessments.length, label: "Total Assessments", color: "primary" },
-            { icon: TrendingUp, value: user?.wellness_score || 0, label: "Wellness Score", color: "wellness" },
-            { icon: Calendar, value: user?.streak || 0, label: "Day Streak", color: "energy" },
-            { icon: Sparkles, value: [...new Set(assessments.map(a => a.type))].length, label: "Assessment Types", color: "focus" }
+            { icon: BarChart3, value: assessments.length, label: "Total Assessments", shortLabel: "Assessments", color: "primary" },
+            { icon: TrendingUp, value: user?.wellness_score || 0, label: "Wellness Score", shortLabel: "Wellness", color: "wellness" },
+            { icon: Calendar, value: user?.streak || 0, label: "Day Streak", shortLabel: "Streak", color: "energy" },
+            { icon: Sparkles, value: [...new Set(assessments.map(a => a.type))].length, label: "Assessment Types", shortLabel: "Types", color: "focus" }
           ].map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -298,25 +300,28 @@ const Progress = () => {
               whileHover={{ scale: 1.05, y: -5 }}
             >
               <Card className="shadow-medium hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <motion.div 
-                      className={`w-10 h-10 bg-${stat.color}/10 rounded-full flex items-center justify-center`}
+                      className={`w-8 h-8 sm:w-10 sm:h-10 bg-${stat.color}/20 dark:bg-${stat.color}/30 rounded-full flex items-center justify-center`}
                       whileHover={{ rotate: 360 }}
                       transition={{ duration: 0.6 }}
                     >
-                      <stat.icon className={`w-5 h-5 text-${stat.color}`} />
+                      <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 text-${stat.color}`} />
                     </motion.div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <motion.p 
-                        className="text-2xl font-bold"
+                        className="text-lg sm:text-2xl font-bold truncate"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ duration: 0.5, delay: index * 0.1 + 0.3, type: "spring" }}
                       >
                         {stat.value}
                       </motion.p>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                        <span className="sm:hidden">{stat.shortLabel}</span>
+                        <span className="hidden sm:inline">{stat.label}</span>
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -351,10 +356,19 @@ const Progress = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="detailed">Detailed Charts</TabsTrigger>
-            <TabsTrigger value="history">Assessment History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+              <span className="sm:hidden">Overview</span>
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="detailed" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+              <span className="sm:hidden">Charts</span>
+              <span className="hidden sm:inline">Detailed Charts</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+              <span className="sm:hidden">History</span>
+              <span className="hidden sm:inline">Assessment History</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
