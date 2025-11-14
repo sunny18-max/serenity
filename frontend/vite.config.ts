@@ -11,10 +11,8 @@ export default defineConfig(({ mode }) => {
     base: '/',
     envDir: path.resolve(__dirname, '..'), // Look for .env in parent directory
     server: {
-      host: "::",
+      host: true, // Allow all hosts in development
       port: 8080,
-      // Allow all hosts in development
-      host: true,
       // Configure proxy for development
       proxy: {
         '/api': {

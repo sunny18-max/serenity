@@ -139,6 +139,13 @@ const Community = () => {
       loadSupportGroupsFromFirebase();
     };
     loadContent();
+
+    // Refresh live streams every 30 seconds to show dynamic content
+    const liveStreamInterval = setInterval(() => {
+      setLiveStreams(getLiveStreams());
+    }, 30000);
+
+    return () => clearInterval(liveStreamInterval);
   }, []);
 
   const handleLikeDiscussion = async (discussionId: string) => {
@@ -330,51 +337,55 @@ const Community = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Badge className="mb-4 px-4 py-2 bg-primary/10 border-primary/30">
+          <Badge className="mb-4 px-4 py-2 bg-primary/20 border-primary/50 text-primary dark:bg-primary/30 dark:border-primary/60 dark:text-primary">
             <Users className="w-4 h-4 mr-2" />
             Community Hub
           </Badge>
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent">
             Mental Wellness Community
           </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
             Connect, learn, and grow together on your mental wellness journey
           </p>
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex border-b mb-8 overflow-x-auto">
+        <div className="flex border-b mb-8 overflow-x-auto scrollbar-hide">
           <Button
             variant={activeTab === "news" ? "default" : "ghost"}
             onClick={() => setActiveTab("news")}
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 py-2 flex-shrink-0"
           >
-            <Newspaper className="w-4 h-4 mr-2" />
-            Mental Wellness News
+            <Newspaper className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Mental Wellness News</span>
+            <span className="sm:hidden">News</span>
           </Button>
           <Button
             variant={activeTab === "discussions" ? "default" : "ghost"}
             onClick={() => setActiveTab("discussions")}
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 py-2 flex-shrink-0"
           >
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Discussions
+            <MessageCircle className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Discussions</span>
+            <span className="sm:hidden">Chat</span>
           </Button>
           <Button
             variant={activeTab === "events" ? "default" : "ghost"}
             onClick={() => setActiveTab("events")}
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 py-2 flex-shrink-0"
           >
-            <Video className="w-4 h-4 mr-2" />
-            Videos & Live Streams
+            <Video className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Videos & Live Streams</span>
+            <span className="sm:hidden">Videos</span>
           </Button>
           <Button
             variant={activeTab === "groups" ? "default" : "ghost"}
             onClick={() => setActiveTab("groups")}
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 py-2 flex-shrink-0"
           >
-            <Users className="w-4 h-4 mr-2" />
-            Support Groups
+            <Users className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Support Groups</span>
+            <span className="sm:hidden">Groups</span>
           </Button>
         </div>
 
@@ -395,17 +406,21 @@ const Community = () => {
             />
           </div>
           <Button 
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4"
             onClick={() => setIsNewDiscussionOpen(true)}
           >
             <Plus className="w-4 h-4" />
-            New Discussion
+            <span className="hidden sm:inline">New Discussion</span>
+            <span className="sm:hidden">New</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button variant="outline" className="flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4">
                 <Filter className="w-4 h-4" />
-                {filterBy === "recent" ? "Recent" : filterBy === "popular" ? "Popular" : "Most Discussed"}
+                <span className="hidden sm:inline">
+                  {filterBy === "recent" ? "Recent" : filterBy === "popular" ? "Popular" : "Most Discussed"}
+                </span>
+                <span className="sm:hidden">Filter</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

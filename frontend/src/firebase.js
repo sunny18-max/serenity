@@ -16,7 +16,8 @@ const firebaseConfig = {
 console.log("Firebase Config:", {
   authDomain: firebaseConfig.authDomain,
   projectId: firebaseConfig.projectId,
-  hasApiKey: !!firebaseConfig.apiKey
+  hasApiKey: !!firebaseConfig.apiKey,
+  apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'Not found'
 });
 
 const app = initializeApp(firebaseConfig);

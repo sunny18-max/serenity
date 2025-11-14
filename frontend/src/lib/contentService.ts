@@ -159,7 +159,8 @@ export const getMentalWellnessVideos = (): VideoContent[] => {
  * Get live mental wellness streams and upcoming events
  */
 export const getLiveStreams = (): VideoContent[] => {
-  return [
+  // Base stream data
+  const baseStreams = [
     {
       id: "live-1",
       title: "24/7 Calming Music for Anxiety Relief",
@@ -168,9 +169,9 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Soothing Relaxation",
       url: "https://www.youtube.com/watch?v=lTRiuFIWV54",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 1200,
+      baseViewers: 1200,
     },
     {
       id: "live-2",
@@ -180,9 +181,9 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Meditation Relax Music",
       url: "https://www.youtube.com/watch?v=8D6bW3bMGaQ",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 850,
+      baseViewers: 850,
     },
     {
       id: "live-3",
@@ -192,9 +193,9 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Nature Healing Society",
       url: "https://www.youtube.com/watch?v=eKFTSSKCzWA",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 2100,
+      baseViewers: 2100,
     },
     {
       id: "live-4",
@@ -204,9 +205,9 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Lofi Girl",
       url: "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 45000,
+      baseViewers: 45000,
     },
     {
       id: "live-5",
@@ -216,9 +217,9 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Peaceful Piano",
       url: "https://www.youtube.com/watch?v=4oStw0r33so",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 3200,
+      baseViewers: 3200,
     },
     {
       id: "live-6",
@@ -228,11 +229,65 @@ export const getLiveStreams = (): VideoContent[] => {
       duration: "LIVE",
       channel: "Yellow Brick Cinema",
       url: "https://www.youtube.com/watch?v=WPni755-Krg",
-      type: "livestream",
+      type: "livestream" as const,
       isLive: true,
-      viewers: 1800,
+      baseViewers: 1800,
     },
+    {
+      id: "live-7",
+      title: "Guided Meditation - Live Session",
+      description: "Interactive guided meditation sessions with breathing exercises.",
+      thumbnail: "https://img.youtube.com/vi/ZToicYcHIOU/maxresdefault.jpg",
+      duration: "LIVE",
+      channel: "Mindful Movement",
+      url: "https://www.youtube.com/watch?v=ZToicYcHIOU",
+      type: "livestream" as const,
+      isLive: true,
+      baseViewers: 950,
+    },
+    {
+      id: "live-8",
+      title: "Binaural Beats for Focus - 24/7",
+      description: "Continuous binaural beats for enhanced focus and concentration.",
+      thumbnail: "https://img.youtube.com/vi/WPni755-Krg/maxresdefault.jpg",
+      duration: "LIVE",
+      channel: "Focus Music",
+      url: "https://www.youtube.com/watch?v=WPni755-Krg",
+      type: "livestream" as const,
+      isLive: true,
+      baseViewers: 1400,
+    },
+    {
+      id: "live-9",
+      title: "Chakra Healing Music - Live Stream",
+      description: "Continuous chakra healing frequencies for spiritual wellness.",
+      thumbnail: "https://img.youtube.com/vi/4oStw0r33so/maxresdefault.jpg",
+      duration: "LIVE",
+      channel: "Spiritual Healing",
+      url: "https://www.youtube.com/watch?v=4oStw0r33so",
+      type: "livestream" as const,
+      isLive: true,
+      baseViewers: 780,
+    }
   ];
+
+  // Get current time to create variation
+  const now = new Date();
+  const timeVariation = now.getMinutes() + now.getSeconds();
+  
+  // Shuffle streams based on current time
+  const shuffledStreams = [...baseStreams].sort(() => 
+    Math.sin(timeVariation + now.getHours()) - 0.5
+  );
+
+  // Take 6 streams and add dynamic viewer counts
+  return shuffledStreams.slice(0, 6).map(stream => ({
+    ...stream,
+    viewers: Math.floor(
+      stream.baseViewers + 
+      (Math.sin(timeVariation + parseInt(stream.id.split('-')[1])) * stream.baseViewers * 0.3)
+    )
+  }));
 };
 
 /**

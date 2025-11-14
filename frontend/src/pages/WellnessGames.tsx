@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,11 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import axios from "axios"; // Ensure axios is imported
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import {
   ArrowLeft, Play, Pause, RotateCcw, TreePine, Sparkles, Award, Target, Clock,
-  Leaf, Flower2, Trees, Brain, Heart, Zap, Trophy, Star, Smile, Cloud, Home
+  Leaf, Flower2, Trees, Brain, Heart, Zap, Trophy, Star, Smile, Cloud, Home,
+  Gamepad2, Crown, Shield, Flame, Gem, Rocket, Cpu, Wifi
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,14 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 
 type GameType = "menu" | "forest" | "memory" | "breathing" | "gratitude" | "whack";
+
+interface GameLevel {
+  level: number;
+  xp: number;
+  xpToNext: number;
+  totalXp: number;
+  prestige: number;
+}
 
 interface GameStats {
   forestMinutes: number;
@@ -35,13 +43,31 @@ interface GameStats {
   gratitudeCount: number;
   whackScore: number;
   totalPoints: number;
+  // Level system for each game
+  forestLevel: GameLevel;
+  memoryLevel: GameLevel;
+  breathingLevel: GameLevel;
+  gratitudeLevel: GameLevel;
+  whackLevel: GameLevel;
+  // Global player stats
+  playerLevel: number;
+  playerXp: number;
+  totalGamesPlayed: number;
+  achievements: string[];
+  lastPlayed: string;
 }
 
 const WellnessGames = () => {
   const [currentGame, setCurrentGame] = useState<GameType>("menu");
   const [stats, setStats] = useState<GameStats>({
     forestMinutes: 0, treesPlanted: 0, memoryHighScore: 0,
-    breathingSessions: 0, gratitudeCount: 0, whackScore: 0, totalPoints: 0
+    breathingSessions: 0, gratitudeCount: 0, whackScore: 0, totalPoints: 0,
+    forestLevel: { level: 1, xp: 0, xpToNext: 100, totalXp: 0, prestige: 0 },
+    memoryLevel: { level: 1, xp: 0, xpToNext: 100, totalXp: 0, prestige: 0 },
+    breathingLevel: { level: 1, xp: 0, xpToNext: 100, totalXp: 0, prestige: 0 },
+    gratitudeLevel: { level: 1, xp: 0, xpToNext: 100, totalXp: 0, prestige: 0 },
+    whackLevel: { level: 1, xp: 0, xpToNext: 100, totalXp: 0, prestige: 0 },
+    playerLevel: 1, playerXp: 0, totalGamesPlayed: 0, achievements: [], lastPlayed: ""
   });
   const [instructionGame, setInstructionGame] = useState<any | null>(null);
 
@@ -75,6 +101,75 @@ const WellnessGames = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Firebase Storage Functions
+  const saveStatsToFirebase = async (newStats: GameStats) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        game_scores: newStats
+      });
+    } catch (e) { 
+      console.error("Error saving stats:", e); 
+    }
+  };
+
+  // Level System Functions
+  const calculateLevel = (totalXp: number): { level: number; xp: number; xpToNext: number } => {
+    let level = 1;
+    let xpForCurrentLevel = 0;
+    let xpForNextLevel = 100;
+    
+    while (totalXp >= xpForNextLevel) {
+      xpForCurrentLevel = xpForNextLevel;
+      level++;
+      xpForNextLevel = Math.floor(100 * Math.pow(1.5, level - 1));
+    }
+    
+    return {
+      level,
+      xp: totalXp - xpForCurrentLevel,
+      xpToNext: xpForNextLevel - xpForCurrentLevel
+    };
+  };
+
+  const addXpToGame = useCallback((gameType: keyof GameStats, xpAmount: number) => {
+    setStats(prevStats => {
+      const gameLevel = prevStats[gameType] as GameLevel;
+      const newTotalXp = gameLevel.totalXp + xpAmount;
+      const levelData = calculateLevel(newTotalXp);
+      
+      const updatedGameLevel: GameLevel = {
+        ...gameLevel,
+        totalXp: newTotalXp,
+        level: levelData.level,
+        xp: levelData.xp,
+        xpToNext: levelData.xpToNext
+      };
+
+      // Check for level up
+      if (levelData.level > gameLevel.level) {
+        toast({
+          title: `🎉 Level Up!`,
+          description: `${gameType.replace('Level', '')} is now level ${levelData.level}!`,
+        });
+      }
+
+      const newStats = {
+        ...prevStats,
+        [gameType]: updatedGameLevel,
+        playerXp: prevStats.playerXp + xpAmount,
+        totalGamesPlayed: prevStats.totalGamesPlayed + 1,
+        lastPlayed: new Date().toISOString()
+      };
+
+      // Save to Firebase
+      saveStatsToFirebase(newStats);
+      return newStats;
+    });
+  }, [toast]);
+
   const games: any[] = [
     { 
       id: "forest", title: "Focus Forest 🌳", desc: "Grow trees by staying focused", icon: TreePine, color: "from-green-400 to-emerald-600", points: stats.forestMinutes,
@@ -102,6 +197,29 @@ const WellnessGames = () => {
     fetchStats();
   }, []);
 
+  const fetchStats = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      console.log("Fetching game stats for user:", user.uid);
+      const docSnap = await getDoc(doc(db, "users", user.uid));
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        console.log("User data:", userData);
+        if (userData.game_scores) {
+          console.log("Found game_scores:", userData.game_scores);
+          setStats(prevStats => ({ ...prevStats, ...userData.game_scores }));
+        } else {
+          console.log("No game_scores found, using default stats");
+        }
+      } else {
+        console.log("User document doesn't exist");
+      }
+    } catch (e) { 
+      console.error("Error fetching stats:", e); 
+    }
+  };
+
   useEffect(() => {
     if (forestActive) {
       timerRef.current = setInterval(() => {
@@ -119,17 +237,6 @@ const WellnessGames = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [forestActive]);
 
-  const fetchStats = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-    try {
-      const docSnap = await getDoc(doc(db, "users", user.uid, "wellness", "games"));
-      if (docSnap.exists()) {
-        setStats(docSnap.data() as GameStats);
-      }
-    } catch (e) { console.error(e); }
-  };
-
   const updateStats = async (updates: Partial<GameStats>) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -144,21 +251,37 @@ const WellnessGames = () => {
     });
 
     try {
-      await axios.post('/api/user/wellness-game-stats', {
-        uid: user.uid,
-        stats: newStats
+      console.log("Saving game stats:", newStats);
+      // Save to the same location where fetchStats reads from
+      await updateDoc(doc(db, "users", user.uid), {
+        game_scores: newStats
       });
-    } catch (e) { console.error(e); }
+      console.log("Game stats saved successfully");
+      toast({
+        title: "Progress Saved",
+        description: "Your wellness progress has been saved.",
+      });
+    } catch (e) { 
+      console.error("Error saving stats:", e);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save progress. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const completeForest = () => {
+  const completeForest = async () => {
     setForestActive(false);
     const mins = forestDuration;
-    updateStats({
+    
+    // Update stats with new forest completion
+    await updateStats({
       forestMinutes: stats.forestMinutes + mins,
       treesPlanted: stats.treesPlanted + 1,
       totalPoints: stats.totalPoints + mins * 2
     });
+    
     toast({ title: "🌳 Tree Planted!", description: `+${mins * 2} points!` });
   };
 
@@ -291,7 +414,12 @@ const WellnessGames = () => {
         <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-6xl">
           <div className="flex items-center justify-between mb-6">
             <Button variant="ghost" onClick={() => navigate("/dashboard")}><ArrowLeft className="w-4 h-4 mr-2" />Back</Button>
-            <Badge className="text-lg px-4 py-2"><Trophy className="w-5 h-5 mr-2" />{stats.totalPoints} Points</Badge>
+            <div className="flex items-center gap-2">
+              <Badge className="text-lg px-4 py-2"><Trophy className="w-5 h-5 mr-2" />{stats.totalPoints} Points</Badge>
+              {/* Debug buttons - remove these after testing */}
+              <Button size="sm" variant="outline" onClick={fetchStats}>🔄 Load</Button>
+              <Button size="sm" variant="outline" onClick={() => updateStats({totalPoints: stats.totalPoints + 10})}>💾 Test Save</Button>
+            </div>
           </div>
 
           <motion.div initial={{y:-20,opacity:0}} animate={{y:0,opacity:1}} className="text-center mb-8">

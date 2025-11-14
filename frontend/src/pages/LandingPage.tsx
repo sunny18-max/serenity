@@ -9,6 +9,13 @@ import { TypeAnimation } from 'react-type-animation';
 import { Link } from "react-router-dom";
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+import ProfessionalHeroVideo from '@/components/ProfessionalHeroVideo';
+import InfiniteCarousel from '@/components/InfiniteCarousel';
+import TestimonialsSection from '@/components/TestimonialsSection';
+import ResearchSection from '@/components/ResearchSection';
+import HowItWorksSection from '@/components/HowItWorksSection';
+import PartnershipsSection from '@/components/PartnershipsSection';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const LandingPage = () => {
   const [activeFeature, setActiveFeature] = useState(0);
@@ -155,11 +162,14 @@ const LandingPage = () => {
             </div>
 
             <div className="flex items-center space-x-4" data-aos="fade-left">
+              {/* Theme Toggle */}
+              <ThemeToggle />
+              
               {/* Desktop Buttons */}
-              <Button variant="ghost" className="hidden md:flex hover:bg-primary/10 neon-border" onClick={() => window.location.href = '/auth'}>
+              <Button variant="ghost" className="hidden md:flex" onClick={() => window.location.href = '/auth'}>
                 Sign In
               </Button>
-              <Button variant="hero" className="hidden md:flex cyber-button shadow-medium" onClick={() => window.location.href = '/auth'}>
+              <Button variant="hero" className="hidden md:flex" onClick={() => window.location.href = '/auth'}>
                 Get Started
               </Button>
               
@@ -209,7 +219,7 @@ const LandingPage = () => {
               <div className="pt-4 space-y-3 border-t border-border">
                 <Button 
                   variant="ghost" 
-                  className="w-full justify-center hover:bg-primary/10" 
+                  className="w-full justify-center btn-enhanced" 
                   onClick={() => {
                     window.location.href = '/auth';
                     setIsMobileMenuOpen(false);
@@ -219,7 +229,7 @@ const LandingPage = () => {
                 </Button>
                 <Button 
                   variant="hero" 
-                  className="w-full justify-center cyber-button shadow-medium" 
+                  className="w-full justify-center" 
                   onClick={() => {
                     window.location.href = '/auth';
                     setIsMobileMenuOpen(false);
@@ -251,7 +261,7 @@ const LandingPage = () => {
       <section className="pt-32 pb-20 px-6">
         <div className="container mx-auto text-center">
           <div data-aos="futuristic-fade" data-aos-delay="100">
-            <Badge variant="outline" className="mb-6 px-4 py-2 bg-primary/10 border-primary/30 text-primary neon-text">
+            <Badge variant="outline" className="mb-6 px-4 py-2 bg-primary/10 border-primary/30 text-primary neon-text dark:bg-primary/20 dark:border-primary/50 dark:text-primary">
               🧠 Mental Wellness Revolution
             </Badge>
             
@@ -283,7 +293,6 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="hero" 
-                className="cyber-button shadow-medium animate-pulse-glow"
                 onClick={() => window.location.href = '/auth'}
                 data-aos="zoom-in"
                 data-aos-delay="300"
@@ -294,7 +303,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-primary/30 hover:bg-primary/10 neon-border"
+                className="btn-enhanced"
                 onClick={() => setIsVideoModalOpen(true)}
                 data-aos="zoom-in"
                 data-aos-delay="400"
@@ -304,25 +313,14 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Hero Image/Animation */}
-          <div className="relative mx-auto max-w-4xl" data-aos="cyber-rotate" data-aos-delay="500">
-            <div className="relative rounded-3xl overflow-hidden shadow-strong floating-animation holographic-card">
-              <img 
-                src={heroDashboard} 
-                alt="Serenity Mental Health Dashboard - Professional analytics and mood tracking interface"
-                className="w-full h-auto"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent"></div>
-              <div className="absolute bottom-6 left-6 right-6">
-                <div className="cyber-glass rounded-xl p-4 text-white">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Activity className="w-5 h-5" />
-                    <span className="font-medium">Real-time Mental Health Analytics</span>
-                  </div>
-                  <p className="text-sm opacity-90">Track your wellness journey with professional-grade insights</p>
-                </div>
-              </div>
+          {/* Professional Hero Video */}
+          <div className="relative mx-auto max-w-5xl" data-aos="fade-up" data-aos-delay="500">
+            <ProfessionalHeroVideo />
+            <div className="text-center mt-8">
+              <Badge variant="outline" className="px-4 py-2 bg-primary/10 border-primary/30 text-primary">
+                <Activity className="w-4 h-4 mr-2 inline" />
+                Professional Mental Health Education
+              </Badge>
             </div>
           </div>
         </div>
@@ -332,7 +330,7 @@ const LandingPage = () => {
       <section id="features" className="py-20 px-6 bg-gradient-to-br from-primary/10 to-secondary/10">
         <div className="container mx-auto">
           <div className="text-center mb-16" data-aos="fade-up">
-            <Badge variant="outline" className="mb-4 px-4 py-2 bg-wellness/15 border-wellness/30 text-wellness neon-text">
+            <Badge variant="outline" className="mb-4 px-4 py-2 bg-wellness/15 border-wellness/30 text-wellness neon-text dark:bg-wellness/25 dark:border-wellness/50 dark:text-wellness">
               ✨ Comprehensive Features
             </Badge>
             <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">
@@ -376,7 +374,7 @@ const LandingPage = () => {
         <div className="container mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div data-aos="fade-right">
-              <Badge variant="outline" className="mb-4 px-4 py-2 bg-energy/15 border-energy/30 text-energy neon-text">
+              <Badge variant="outline" className="mb-4 px-4 py-2 bg-energy/15 border-energy/30 text-energy neon-text dark:bg-energy/25 dark:border-energy/50 dark:text-energy">
                 🎯 Impact & Benefits
               </Badge>
               <h2 className="text-4xl font-serif font-bold mb-6">
@@ -384,7 +382,7 @@ const LandingPage = () => {
                 <span className="text-gradient-primary block">One Person at a Time</span>
               </h2>
               <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
-                Join the mental wellness revolution. Our platform has helped thousands 
+/* ... */
                 of individuals take control of their mental health journey with confidence and privacy.
               </p>
               
@@ -405,7 +403,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="hero" 
-                className="mt-8 cyber-button shadow-medium"
+                className="mt-8"
                 onClick={() => window.location.href = '/auth'}
                 data-aos="zoom-in"
                 data-aos-delay="600"
@@ -437,130 +435,51 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Development Team Section */}
+      {/* Infinite Carousel Section */}
       <section id="about" className="py-20 px-6 bg-gradient-to-br from-secondary/5 to-accent/5">
         <div className="container mx-auto">
-          <div className="text-center mb-16" data-aos="fade-up">
-            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/15 border-primary/30 text-primary neon-text">
-              👥 Meet Our Team
+          <div className="text-center mb-12" data-aos="fade-up">
+            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/15 border-primary/30 text-primary neon-text dark:bg-primary/25 dark:border-primary/50 dark:text-primary">
+              ✨ What Makes Us Different
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              The Minds Behind
-              <span className="text-gradient-primary block font-cursive">Serenity</span>
+              Comprehensive Features for
+              <span className="text-gradient-primary block font-cursive">Your Mental Wellness</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-body">
-              Our dedicated team of developers and designers from IITDM Kurnool, 
-              passionate about revolutionizing mental health care through technology.
+              Discover the powerful features that make Serenity the perfect companion 
+              for your mental health journey.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-            {[
-              {
-                name: "Saathvik Kalepu",
-                role: "Frontend Developer & Team Leader",
-                rollNo: "123cs0013",
-                tech: ["React", "TypeScript", "Tailwind CSS", "UI/UX Design"],
-                description: "Leading the frontend development with modern React architecture",
-                image: "/images/team/saathvik.jpg"
-              },
-              {
-                name: "M. Thanuj Kumar", 
-                role: "Backend Developer",
-                rollNo: "123cs0040",
-                tech: ["Node.js", "Express", "MongoDB", "API Development"],
-                description: "Building robust backend systems and database architecture",
-                image: "/images/team/thanuj.jpg"
-              },
-              {
-                name: "M. Harsha Vardhan Reddy",
-                role: "Full Stack Developer", 
-                rollNo: "123cs0044",
-                tech: ["React", "Node.js", "Database", "DevOps"],
-                description: "Bridging frontend and backend with seamless integration",
-                image: "/images/team/harsha.jpg"
-              },
-              {
-                name: "Umesh Rathod",
-                role: "UI/UX & Integration",
-                rollNo: "123cs0055", 
-                tech: ["Figma", "React", "Animation", "Integration"],
-                description: "Crafting beautiful user experiences and system integration",
-                image: "/images/team/umesh.jpg"
-              }
-            ].map((member, index) => (
-              <Card 
-                key={index}
-                className="team-card group"
-                data-aos="futuristic-fade"
-                data-aos-delay={index * 100}
-              >
-                <CardHeader className="text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 bg-gradient-hero rounded-full flex items-center justify-center overflow-hidden shadow-glow">
-                    {member.image ? (
-                      <img 
-                        src={member.image} 
-                        alt={member.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // Fallback to initials if image fails to load
-                          const target = e.currentTarget;
-                          target.style.display = 'none';
-                          const nextSibling = target.nextSibling as HTMLElement;
-                          if (nextSibling) {
-                            nextSibling.style.display = 'flex';
-                          }
-                        }}
-                      />
-                    ) : null}
-                    <div className={`w-full h-full flex items-center justify-center text-white text-3xl font-bold ${member.image ? 'hidden' : 'flex'}`}>
-                      {member.name.split(' ').map(n => n[0]).join('')}
-                    </div>
-                  </div>
-                  <CardTitle className="text-lg font-bold">{member.name}</CardTitle>
-                  <p className="text-primary font-medium">{member.role}</p>
-                  <p className="text-sm text-muted-foreground">Roll No: {member.rollNo}</p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4 font-body">
-                    {member.description}
-                  </p>
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-accent">Tech Stack:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {member.tech.map((tech, techIndex) => (
-                        <Badge 
-                          key={techIndex} 
-                          variant="secondary" 
-                          className="text-xs bg-primary/10 text-primary border-primary/20"
-                        >
-                          {tech}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Infinite Carousel */}
+          <div data-aos="fade-up" data-aos-delay="200">
+            <InfiniteCarousel />
           </div>
 
-          <div className="text-center" data-aos="fade-up">
-            <Card className="inline-block p-6 bg-gradient-calm text-white">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
-                  <Users className="w-8 h-8" />
-                </div>
-                <div className="text-left">
-                  <h3 className="text-xl font-bold">Faculty Supervisor</h3>
-                  <p className="text-lg">Dr. V. Siva Rama Krishnaiah</p>
-                  <p className="text-sm opacity-90">Professor, Department of Computer Science and Engineering</p>
-                  <p className="text-sm opacity-80">IITDM Kurnool</p>
-                </div>
-              </div>
-            </Card>
+          {/* Learn More CTA */}
+          <div className="text-center mt-12" data-aos="fade-up" data-aos-delay="400">
+            <Link to="/about">
+              <Button variant="outline" size="lg" className="btn-enhanced">
+                Learn More About Serenity
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
+
+      {/* How It Works Section */}
+      <HowItWorksSection />
+
+      {/* Research & Evidence Section */}
+      <ResearchSection />
+
+      {/* Testimonials Section */}
+      <TestimonialsSection />
+
+      {/* Partnerships & Resources Section */}
+      <PartnershipsSection />
 
       {/* CTA Section */}
       <section className="py-20 px-6 bg-gradient-hero relative overflow-hidden">
@@ -580,7 +499,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="secondary" 
-                className="cyber-button bg-white text-primary hover:bg-white/90 shadow-medium"
+                className="bg-white text-primary hover:bg-white/90"
                 onClick={() => window.location.href = '/auth'}
                 data-aos="zoom-in"
                 data-aos-delay="200"
@@ -591,7 +510,7 @@ const LandingPage = () => {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-white/60 text-white bg-black/40 hover:bg-white/15 neon-border"
+                className="btn-enhanced border-white/60 text-white bg-black/40 hover:bg-white/15"
                 data-aos="zoom-in"
                 data-aos-delay="300"
                 onClick={() => window.location.href = '/about'}

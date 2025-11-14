@@ -1,10 +1,24 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone, MapPin, Github, Linkedin, Code, Sparkles, ArrowLeft, Users } from "lucide-react";
 import { Link } from "react-router-dom";
+import AOS from 'aos';
+import 'aos/dist/aos.css';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const Contact = () => {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: 'ease-out-cubic',
+      once: true,
+      mirror: false,
+      offset: 50
+    });
+  }, []);
+
   const developers = [
     {
       name: "Saathvik Kalepu",
@@ -57,7 +71,7 @@ const Contact = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 cyber-grid">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -67,13 +81,16 @@ const Contact = () => {
               </div>
               <h1 className="text-xl font-cursive font-bold text-gradient-primary">Serenity</h1>
             </div>
-            <Link 
-              to="/" 
-              className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Link>
+            <div className="flex items-center space-x-3">
+              <ThemeToggle />
+              <Link 
+                to="/" 
+                className="inline-flex items-center text-slate-600 hover:text-indigo-600 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -81,15 +98,15 @@ const Contact = () => {
       <div className="container mx-auto px-6 py-12">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="text-center mb-12">
-            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/10 border-primary/30 text-primary">
+          <div className="text-center mb-12" data-aos="fade-up">
+            <Badge variant="outline" className="mb-4 px-4 py-2 bg-primary/10 border-primary/30 text-primary neon-text dark:bg-primary/20 dark:border-primary/50 dark:text-primary">
               👨‍💻 Meet the Development Team
             </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 leading-tight">
               Contact Our
               <span className="text-gradient-primary block font-cursive">Developers</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-body">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto font-body leading-relaxed">
               Get in touch with the passionate team behind Serenity. We're students from IITDM Kurnool 
               dedicated to revolutionizing mental health care through technology.
             </p>
@@ -98,7 +115,12 @@ const Contact = () => {
           {/* Developer Cards */}
           <div className="grid md:grid-cols-2 gap-8 mb-16">
             {developers.map((dev, index) => (
-              <Card key={index} className="team-card group">
+              <Card 
+                key={index} 
+                className="team-card group hover:shadow-medium hover:-translate-y-2 transition-all duration-300 border-0 bg-card/70 backdrop-blur-sm"
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
+              >
                 <CardHeader>
                   <div className="flex items-start gap-4">
                     <div className="w-16 h-16 bg-gradient-hero rounded-full flex items-center justify-center overflow-hidden shadow-glow flex-shrink-0">
@@ -162,12 +184,12 @@ const Contact = () => {
 
                   {/* Social Links */}
                   <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" asChild>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 btn-enhanced" asChild>
                       <a href={dev.github} target="_blank" rel="noopener noreferrer">
                         <Github className="w-4 h-4" />
                       </a>
                     </Button>
-                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" asChild>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0 btn-enhanced" asChild>
                       <a href={dev.linkedin} target="_blank" rel="noopener noreferrer">
                         <Linkedin className="w-4 h-4" />
                       </a>
@@ -179,11 +201,15 @@ const Contact = () => {
           </div>
 
           {/* Faculty Supervisor */}
-          <Card className="mb-12 p-8 bg-gradient-calm text-white">
+          <Card 
+            className="mb-12 p-8 bg-gradient-calm text-white holographic-card" 
+            data-aos="zoom-in" 
+            data-aos-delay="300"
+          >
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Faculty Supervisor</h2>
               <div className="flex items-center justify-center gap-6">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center overflow-hidden glow-effect">
                   <div className="w-full h-full flex items-center justify-center text-2xl font-bold">
                     VS
                   </div>
@@ -200,22 +226,34 @@ const Contact = () => {
 
           {/* Project Info */}
           <div className="grid md:grid-cols-3 gap-6">
-            <Card className="text-center p-6">
-              <Code className="w-12 h-12 text-primary mx-auto mb-4" />
+            <Card 
+              className="text-center p-6 hover:shadow-medium hover:-translate-y-2 transition-all duration-300 border-0 bg-card/70 backdrop-blur-sm"
+              data-aos="zoom-in"
+              data-aos-delay="400"
+            >
+              <Code className="w-12 h-12 text-primary mx-auto mb-4 glow-effect" />
               <h3 className="font-bold mb-2">CS307 Project</h3>
               <p className="text-sm text-muted-foreground font-body">
                 Software Engineering Practice
               </p>
             </Card>
-            <Card className="text-center p-6">
-              <Users className="w-12 h-12 text-wellness mx-auto mb-4" />
+            <Card 
+              className="text-center p-6 hover:shadow-medium hover:-translate-y-2 transition-all duration-300 border-0 bg-card/70 backdrop-blur-sm"
+              data-aos="zoom-in"
+              data-aos-delay="500"
+            >
+              <Users className="w-12 h-12 text-wellness mx-auto mb-4 glow-effect" />
               <h3 className="font-bold mb-2">Team 5</h3>
               <p className="text-sm text-muted-foreground font-body">
                 MHAITS Development Team
               </p>
             </Card>
-            <Card className="text-center p-6">
-              <MapPin className="w-12 h-12 text-energy mx-auto mb-4" />
+            <Card 
+              className="text-center p-6 hover:shadow-medium hover:-translate-y-2 transition-all duration-300 border-0 bg-card/70 backdrop-blur-sm"
+              data-aos="zoom-in"
+              data-aos-delay="600"
+            >
+              <MapPin className="w-12 h-12 text-energy mx-auto mb-4 glow-effect" />
               <h3 className="font-bold mb-2">IITDM Kurnool</h3>
               <p className="text-sm text-muted-foreground font-body">
                 Indian Institute of Information Technology

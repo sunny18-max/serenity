@@ -192,17 +192,13 @@ const AuthPage = () => {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
       
-      // Check if email is verified
+      // Note: Email verification is now optional - users can verify in settings
       if (!user.emailVerified) {
-        setVerificationEmail(user.email || "");
-        setShowVerificationMessage(true);
-        setIsLoading(false);
         toast({
           title: "Email not verified",
-          description: "Please verify your email before signing in.",
-          variant: "destructive"
+          description: "You can verify your email in Settings for enhanced security.",
+          variant: "default"
         });
-        return;
       }
       
       // Get user profile from Firestore
@@ -296,7 +292,8 @@ const AuthPage = () => {
         }
       } catch (error: any) {
         if (error.message !== "API_UNAVAILABLE") {
-          throw error;
+          console.error("API check error:", error);
+          // Don't block signup for API errors, just log and continue
         }
         // If API is unavailable, continue with signup anyway
         console.log("API unavailable, proceeding with signup");
@@ -330,17 +327,13 @@ const AuthPage = () => {
         emailVerified: false
       });
       
-      // Show verification message
-      setVerificationEmail(formData.email);
-      setShowVerificationMessage(true);
-      
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account."
+        title: "Account created successfully!",
+        description: "Welcome to Serenity! You can verify your email in Settings for enhanced security."
       });
       
-      // Sign out the user until they verify
-      await auth.signOut();
+      // Navigate to dashboard instead of forcing verification
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Sign up error:", error);
       let errorMessage = "Sign up failed. Please try again.";
@@ -372,6 +365,7 @@ const AuthPage = () => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      
       // Create user profile in Firestore if not exists
       const userDoc = await getDoc(doc(db, "users", result.user.uid));
       if (!userDoc.exists()) {
@@ -387,12 +381,20 @@ const AuthPage = () => {
           has_completed_initial_assessment: false,
           moods: [],
           last_login: null,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          emailVerified: true // Auto-verify Google users
         });
+      } else {
+        // Update existing user to mark as verified
+        await setDoc(doc(db, "users", result.user.uid), {
+          emailVerified: true,
+          last_login: new Date().toISOString()
+        }, { merge: true });
       }
+      
       toast({
         title: `Welcome, ${result.user.displayName || "User"}!`,
-        description: "Signed in with Google."
+        description: "Signed in with Google. Email automatically verified."
       });
       navigate("/dashboard");
     } catch (error: any) {

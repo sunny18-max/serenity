@@ -18,29 +18,32 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:8080',
   'https://serenity-s1io.onrender.com',
-  'https://serenity-frontend-jade.vercel.app/',
-  'https://serenity-plum-gamma.vercel.app/'
+  'https://serenity-frontend-jade.vercel.app',
+  'https://serenity-plum-gamma.vercel.app'
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
-      console.warn(msg);
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Custom CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Check if the origin is in the allowed origins
+  if (!origin || allowedOrigins.some(allowedOrigin => 
+    origin === allowedOrigin || 
+    origin.startsWith(allowedOrigin.replace(/\/+$/, '/'))
+  )) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
 
-// Handle preflight requests
-app.options('*', cors());
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
+  next();
+});
 app.use(bodyParser.json());
 
 // Initialize Firebase Admin SDK with service account key file

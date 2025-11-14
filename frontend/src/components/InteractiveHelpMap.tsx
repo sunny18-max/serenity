@@ -257,6 +257,11 @@ export const InteractiveHelpMap = () => {
     filterCenters();
   }, [searchQuery, selectedType, helpCenters]);
 
+  // Auto-detect location on component mount
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
   const filterCenters = () => {
     let filtered = helpCenters;
 
@@ -374,12 +379,13 @@ export const InteractiveHelpMap = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Sidebar with Search and List */}
-      <div className="lg:col-span-1 flex flex-col gap-4 max-h-[800px] overflow-hidden">
-        {/* Search and Filters */}
-        <Card>
-          <CardContent className="pt-6 space-y-4">
+    <div className="w-full h-full">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
+        {/* Sidebar with Search and List */}
+        <div className="xl:col-span-1 flex flex-col gap-4 h-full">
+          {/* Search and Filters */}
+          <Card className="flex-shrink-0">
+            <CardContent className="p-4 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -435,7 +441,7 @@ export const InteractiveHelpMap = () => {
             <Button
               onClick={getUserLocation}
               disabled={isLoadingLocation}
-              className="w-full bg-gradient-primary"
+              className="w-full btn-enhanced"
               size="sm"
             >
               {isLoadingLocation ? (
@@ -454,86 +460,90 @@ export const InteractiveHelpMap = () => {
         </Card>
 
         {/* Help Centers List */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2 pb-4">
-          <div className="flex items-center justify-between px-1 mb-2">
-            <p className="text-sm font-medium">
-              {filteredCenters.length} Help Centers
-            </p>
-            {userLocation && (
-              <Badge variant="outline" className="text-xs">
-                <Navigation className="w-3 h-3 mr-1" />
-                Sorted by distance
-              </Badge>
-            )}
-          </div>
-          {filteredCenters.map((center) => (
-            <Card
-              key={center.id}
-              className={cn(
-                "cursor-pointer transition-all hover:shadow-lg",
-                selectedCenter?.id === center.id && "border-2 border-primary"
+        <Card className="flex-1 overflow-hidden">
+          <CardContent className="p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium">
+                {filteredCenters.length} Help Centers
+              </p>
+              {userLocation && (
+                <Badge variant="outline" className="text-xs">
+                  <Navigation className="w-3 h-3 mr-1" />
+                  Sorted by distance
+                </Badge>
               )}
-              onClick={() => focusOnCenter(center)}
-            >
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-sm leading-tight">{center.name}</h3>
-                    <Badge className={cn("text-xs flex-shrink-0", getTypeColor(center.type))}>
-                      {center.type}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1.5 text-xs text-muted-foreground">
-                    <div className="flex items-start gap-1.5">
-                      <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                      <span className="leading-tight">{center.city}, {center.country}</span>
-                    </div>
-                    {center.distance !== undefined && (
-                      <div className="flex items-center gap-1.5 font-medium text-primary">
-                        <Navigation className="w-3 h-3 flex-shrink-0" />
-                        <span>{center.distance.toFixed(1)} miles away</span>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+              {filteredCenters.map((center) => (
+                <Card
+                  key={center.id}
+                  className={cn(
+                    "cursor-pointer transition-all hover:shadow-lg border-0 bg-card/70 backdrop-blur-sm",
+                    selectedCenter?.id === center.id && "ring-2 ring-primary"
+                  )}
+                  onClick={() => focusOnCenter(center)}
+                >
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-sm leading-tight">{center.name}</h3>
+                        <Badge className={cn("text-xs flex-shrink-0", getTypeColor(center.type))}>
+                          {center.type}
+                        </Badge>
                       </div>
-                    )}
-                    <div className="flex items-start gap-1.5">
-                      <Clock className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                      <span className="leading-tight">{center.hours}</span>
+                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                        <div className="flex items-start gap-1.5">
+                          <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                          <span className="leading-tight">{center.city}, {center.country}</span>
+                        </div>
+                        {center.distance !== undefined && (
+                          <div className="flex items-center gap-1.5 font-medium text-primary">
+                            <Navigation className="w-3 h-3 flex-shrink-0" />
+                            <span>{center.distance.toFixed(1)} miles away</span>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-1.5">
+                          <Clock className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                          <span className="leading-tight">{center.hours}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `tel:${center.phone}`;
+                          }}
+                          className="flex-1 h-8 text-xs btn-enhanced"
+                        >
+                          <Phone className="w-3 h-3 mr-1" />
+                          Call
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            getDirections(center);
+                          }}
+                          className="flex-1 h-8 text-xs btn-enhanced"
+                        >
+                          <Navigation className="w-3 h-3 mr-1" />
+                          Directions
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href = `tel:${center.phone}`;
-                      }}
-                      className="flex-1 h-8 text-xs"
-                    >
-                      <Phone className="w-3 h-3 mr-1" />
-                      Call
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        getDirections(center);
-                      }}
-                      className="flex-1 h-8 text-xs"
-                    >
-                      <Navigation className="w-3 h-3 mr-1" />
-                      Directions
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Map View */}
-      <div className="lg:col-span-2 relative">
-        <Card className="h-[800px]">
+      <div className="xl:col-span-3 relative">
+        <Card className="h-full">
           <CardContent className="p-0 h-full relative">
             <iframe
               src={getMapUrl()}
@@ -545,8 +555,8 @@ export const InteractiveHelpMap = () => {
               title="Help Centers Map"
             />
             {selectedCenter && (
-              <div className="absolute bottom-4 left-4 right-4 bg-white dark:bg-gray-900 p-4 rounded-lg shadow-xl border-2 border-primary max-w-2xl mx-auto">
-                <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="absolute bottom-4 left-4 right-4 bg-card/95 dark:bg-card/95 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-border max-w-2xl mx-auto">
+                <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-lg leading-tight mb-2">{selectedCenter.name}</h3>
                     <Badge className={cn("text-xs", getTypeColor(selectedCenter.type))}>
@@ -557,29 +567,36 @@ export const InteractiveHelpMap = () => {
                     size="icon"
                     variant="ghost"
                     onClick={() => setSelectedCenter(null)}
-                    className="flex-shrink-0"
+                    className="flex-shrink-0 btn-enhanced"
                   >
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className="space-y-2 text-sm mb-4">
+                <div className="space-y-3 text-sm mb-6">
                   <p className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-primary" />
                     <span className="leading-tight">{selectedCenter.address}, {selectedCenter.city}, {selectedCenter.country}</span>
                   </p>
                   <p className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 flex-shrink-0" />
+                    <Phone className="w-4 h-4 flex-shrink-0 text-primary" />
                     <span>{selectedCenter.phone}</span>
                   </p>
                   <p className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    <Clock className="w-4 h-4 flex-shrink-0 text-primary" />
                     <span>{selectedCenter.hours}</span>
                   </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedCenter.services.map((service, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {service}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   <Button
                     onClick={() => window.location.href = `tel:${selectedCenter.phone}`}
-                    className="flex-1 bg-gradient-primary min-w-[120px]"
+                    className="flex-1 btn-enhanced min-w-[120px]"
                     size="sm"
                   >
                     <Phone className="w-4 h-4 mr-2" />
@@ -588,7 +605,7 @@ export const InteractiveHelpMap = () => {
                   <Button
                     onClick={() => getDirections(selectedCenter)}
                     variant="outline"
-                    className="flex-1 min-w-[120px]"
+                    className="flex-1 min-w-[120px] btn-enhanced"
                     size="sm"
                   >
                     <Navigation className="w-4 h-4 mr-2" />
@@ -599,6 +616,7 @@ export const InteractiveHelpMap = () => {
                       onClick={() => window.open(selectedCenter.website, "_blank")}
                       variant="outline"
                       size="sm"
+                      className="btn-enhanced"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Button>
@@ -609,6 +627,7 @@ export const InteractiveHelpMap = () => {
           </CardContent>
         </Card>
       </div>
+    </div>
     </div>
   );
 };

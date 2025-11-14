@@ -90,30 +90,39 @@
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 8%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222.2 84% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 250 85% 70%;
     --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-light: 250 85% 80%;
+    --primary-dark: 250 85% 60%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 180 60% 60%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary-light: 180 60% 70%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 270 70% 70%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --wellness: 150 60% 60%;
+    --wellness-foreground: 222.2 47.4% 11.2%;
+    --calm: 200 70% 70%;
+    --energy: 35 90% 70%;
+    --focus: 260 80% 75%;
 
-    --destructive: 0 62.8% 30.6%;
+    --muted: 217.2 32.6% 20%;
+    --muted-foreground: 215 20.2% 75%;
+
+    --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 217.2 32.6% 25%;
+    --input: 217.2 32.6% 20%;
+    --ring: 250 85% 70%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -409,5 +418,111 @@
 
   .font-cursive {
     font-family: 'Dancing Script', cursive;
+  }
+
+  /* Carousel pause animation */
+  .pause-animation {
+    animation-play-state: paused !important;
+  }
+
+  /* Enhanced button animations */
+  .btn-enhanced {
+    position: relative;
+    overflow: hidden;
+    transform-style: preserve-3d;
+  }
+
+  .btn-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-enhanced:hover::before {
+    left: 100%;
+  }
+
+  .btn-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.5), 0 0 60px rgba(139, 92, 246, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .dark .btn-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  }
+
+  .dark .btn-glow:hover {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.7), 0 0 60px rgba(139, 92, 246, 0.4);
+  }
+
+  .btn-pulse {
+    animation: pulse-glow 2s infinite;
+  }
+
+  .dark .btn-pulse {
+    animation: pulse-glow-dark 2s infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(139, 92, 246, 0.3);
+    }
+  }
+
+  @keyframes pulse-glow-dark {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.8), 0 0 80px rgba(139, 92, 246, 0.5);
+    }
+  }
+
+  /* Dark mode visibility fixes */
+  .dark .neon-text {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .dark .shadow-glow {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  }
+
+  .dark .glow-effect {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile responsive utilities */
+  @media (max-width: 640px) {
+    .text-responsive {
+      font-size: 0.875rem;
+    }
+    
+    .badge-responsive {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
   }
 }

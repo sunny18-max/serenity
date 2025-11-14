@@ -70,44 +70,74 @@ const Achievements = () => {
     Target, Calendar, BookOpen, Users, Zap, Trophy, Clock, Brain, Heart, TrendingUp, Shield
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
+  const fetchUserData = async () => {
       const user = auth.currentUser;
       if (!user) return;
 
       try {
         setLoading(true);
+        console.log("Fetching achievements data for user:", user.uid);
         
         // Fetch user data
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const userData = userDoc.data();
+        console.log("User data for achievements:", userData);
 
         // Fetch assessments
-        const assessmentsSnapshot = await getDocs(collection(db, "users", user.uid, "assessments"));
-        const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
+        let assessments: any[] = [];
+        try {
+          const assessmentsSnapshot = await getDocs(collection(db, "users", user.uid, "assessments"));
+          assessments = assessmentsSnapshot.docs.map(doc => doc.data());
+          console.log("Assessments found:", assessments.length);
+        } catch (e) {
+          console.log("No assessments collection found, using userData.assessments_count");
+          // Fallback to user document field
+          const assessmentCount = userData?.assessments_count || userData?.has_completed_initial_assessment ? 1 : 0;
+          assessments = Array(assessmentCount).fill({});
+        }
 
         // Fetch mood entries
         const moods = userData?.moods || [];
+        console.log("Moods found:", moods.length);
 
-        // Fetch resources activity (you might have a separate collection for this)
-        const resourcesQuery = query(
-          collection(db, "users", user.uid, "resources"),
-          where("completed", "==", true)
-        );
-        const resourcesSnapshot = await getDocs(resourcesQuery);
-        const completedResources = resourcesSnapshot.docs.length;
+        // Fetch resources activity - try different approaches
+        let completedResources = 0;
+        try {
+          const resourcesQuery = query(
+            collection(db, "users", user.uid, "resources"),
+            where("completed", "==", true)
+          );
+          const resourcesSnapshot = await getDocs(resourcesQuery);
+          completedResources = resourcesSnapshot.docs.length;
+        } catch (e) {
+          console.log("No resources collection found, using default");
+          // Fallback - assume some resources completed based on other activity
+          completedResources = Math.min(assessments.length * 2, 5);
+        }
+        console.log("Completed resources:", completedResources);
 
-        // Fetch community posts (you might have a separate collection for this)
-        const postsQuery = query(
-          collection(db, "users", user.uid, "posts")
-        );
-        const postsSnapshot = await getDocs(postsQuery);
-        const communityPosts = postsSnapshot.docs.length;
+        // Fetch community posts - try different approaches
+        let communityPosts = 0;
+        try {
+          const postsQuery = query(
+            collection(db, "users", user.uid, "posts")
+          );
+          const postsSnapshot = await getDocs(postsQuery);
+          communityPosts = postsSnapshot.docs.length;
+        } catch (e) {
+          console.log("No posts collection found, using default");
+          // Fallback - assume some community activity
+          communityPosts = 0;
+        }
+        console.log("Community posts:", communityPosts);
 
-        // Calculate stats
+        // Calculate stats - also check game_scores for additional points
+        const gameScores = userData?.game_scores || {};
+        const totalGamePoints = gameScores?.totalPoints || 0;
+        
         const stats: UserStats = {
-          totalPoints: userData?.totalPoints || 0,
-          unlockedAchievements: userData?.unlockedAchievements?.length || 0,
+          totalPoints: (userData?.totalPoints || 0) + totalGamePoints,
+          unlockedAchievements: 0, // Will be calculated after achievements are generated
           totalAchievements: 12, // Total available achievements
           currentStreak: userData?.streak || 0,
           level: userData?.level || 1,
@@ -117,6 +147,8 @@ const Achievements = () => {
           resourcesCompleted: completedResources,
           communityPosts: communityPosts
         };
+        
+        console.log("Calculated stats:", stats);
 
         setUserStats(stats);
 
@@ -292,7 +324,15 @@ const Achievements = () => {
           }
         ];
 
+        // Update unlocked achievements count
+        const unlockedCount = userAchievements.filter(a => a.unlocked).length;
+        stats.unlockedAchievements = unlockedCount;
+        
+        console.log("Generated achievements:", userAchievements);
+        console.log("Unlocked achievements:", unlockedCount);
+        
         setAchievements(userAchievements);
+        setUserStats(stats);
 
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -306,6 +346,7 @@ const Achievements = () => {
       }
     };
 
+  useEffect(() => {
     fetchUserData();
   }, [toast]);
 
@@ -334,7 +375,20 @@ const Achievements = () => {
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">Achievements</h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-4xl font-bold">Achievements</h1>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                console.log("Refreshing achievements...");
+                fetchUserData();
+              }}
+              disabled={loading}
+            >
+              🔄 Refresh
+            </Button>
+          </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Celebrate your progress and milestones in your mental wellness journey.
           </p>
