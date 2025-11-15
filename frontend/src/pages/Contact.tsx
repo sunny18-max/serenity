@@ -25,7 +25,7 @@ const Contact = () => {
       role: "Frontend Developer & Team Leader",
       rollNo: "123cs0013",
       email: "123cs0013@iiitk.ac.in",
-      phone: "+91-XXXXX-XXXXX",
+      phone: "+91-9908179816",
       tech: ["React", "TypeScript", "Tailwind CSS", "UI/UX Design"],
       github: "https://github.com/sunny18-max",
       linkedin: "https://www.linkedin.com/in/saathvik-kalepu-17041228b/",
@@ -37,7 +37,7 @@ const Contact = () => {
       role: "Backend Developer",
       rollNo: "123cs0040",
       email: "123cs0040@iiitk.ac.in",
-      phone: "+91-XXXXX-XXXXX",
+      phone: "+91-9550500838",
       tech: ["Node.js", "Express", "MongoDB", "API Development"],
       github: "#",
       linkedin: "https://www.linkedin.com/in/manchuri-thanuj-kumar-reddy-aa5907378/",
@@ -49,7 +49,7 @@ const Contact = () => {
       role: "Full Stack Developer", 
       rollNo: "123cs0044",
       email: "123cs0044@iiitk.ac.in",
-      phone: "+91-XXXXX-XXXXX",
+      phone: "+91-8333868606",
       tech: ["React", "Node.js", "Database", "DevOps"],
       github: "https://github.com/Harsha-76",
       linkedin: "https://www.linkedin.com/in/harsha-vardhan-b6a49a36b/",
@@ -61,7 +61,7 @@ const Contact = () => {
       role: "UI/UX & Integration",
       rollNo: "123cs0055", 
       email: "123cs0055@iiitk.ac.in",
-      phone: "+91-XXXXX-XXXXX",
+      phone: "+91-7021440840",
       tech: ["Figma", "React", "Animation", "Integration"],
       github: "https://github.com/umeshrathlavath",
       linkedin: "https://www.linkedin.com/in/rathlavath-umesh-973978372/",
@@ -199,6 +199,7 @@ const Contact = () => {
               </Card>
             ))}
           </div>
+<<<<<<< HEAD
 
           {/* Faculty Supervisor */}
           <Card 
@@ -260,6 +261,8 @@ const Contact = () => {
               </p>
             </Card>
           </div>
+=======
+>>>>>>> 51c2ae49e1824c7ece512a44d5fd47d09c32c84c
         </div>
       </div>
     </div>
