@@ -199,7 +199,6 @@ const Contact = () => {
               </Card>
             ))}
           </div>
-<<<<<<< HEAD
 
           {/* Faculty Supervisor */}
           <Card 
@@ -261,8 +260,6 @@ const Contact = () => {
               </p>
             </Card>
           </div>
-=======
->>>>>>> 51c2ae49e1824c7ece512a44d5fd47d09c32c84c
         </div>
       </div>
     </div>

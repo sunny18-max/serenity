@@ -286,7 +286,7 @@ ${new Date().toLocaleString()}`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-background to-orange-50 dark:from-gray-900 dark:via-background dark:to-gray-800 pb-16 lg:pb-0">
+    <div className="min-h-screen bg-slate-900 text-white pb-16 lg:pb-0">
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-7xl">
         {/* Emergency Alert */}
         <Alert className="mb-6 border-red-500/50 bg-red-500/10">
@@ -314,7 +314,7 @@ ${new Date().toLocaleString()}`;
                 </div>
                 Emergency Support
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-slate-300 mt-1">
                 You're not alone. Help is available 24/7
               </p>
             </div>
@@ -327,16 +327,16 @@ ${new Date().toLocaleString()}`;
 
         {/* Main Tabs */}
         <Tabs defaultValue="map" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
-            <TabsTrigger value="map" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 lg:w-[400px] bg-slate-800 p-1 rounded-full border border-slate-700">
+            <TabsTrigger value="map" className="flex items-center gap-2 bg-transparent text-slate-300 data-[state=active]:bg-slate-900 data-[state=active]:text-white px-4 py-2 rounded-full">
               <Map className="w-4 h-4" />
               Map
             </TabsTrigger>
-            <TabsTrigger value="hotlines" className="flex items-center gap-2">
+            <TabsTrigger value="hotlines" className="flex items-center gap-2 bg-transparent text-slate-300 data-[state=active]:bg-slate-900 data-[state=active]:text-white px-4 py-2 rounded-full">
               <Phone className="w-4 h-4" />
               Hotlines
             </TabsTrigger>
-            <TabsTrigger value="coping" className="flex items-center gap-2">
+            <TabsTrigger value="coping" className="flex items-center gap-2 bg-transparent text-slate-300 data-[state=active]:bg-slate-900 data-[state=active]:text-white px-4 py-2 rounded-full">
               <Heart className="w-4 h-4" />
               Coping
             </TabsTrigger>
@@ -349,7 +349,7 @@ ${new Date().toLocaleString()}`;
                 <MapPin className="w-6 h-6 text-primary" />
                 Find Help Centers Worldwide
               </h2>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-slate-300 mb-6">
                 Browse the interactive map to find mental health facilities near you or anywhere in the world
               </p>
               <InteractiveHelpMap />
@@ -372,7 +372,7 @@ ${new Date().toLocaleString()}`;
                     <Card 
                       key={hotline.id}
                       className={cn(
-                        "shadow-medium border-2 transition-all cursor-pointer hover:shadow-glow",
+                        "shadow-medium border-2 transition-all cursor-pointer hover:shadow-glow bg-slate-800 text-white",
                         selectedHotline?.id === hotline.id ? "border-primary" : "border-primary/10"
                       )}
                       onClick={() => setSelectedHotline(hotline)}
@@ -398,9 +398,9 @@ ${new Date().toLocaleString()}`;
                       <CardContent>
                         <div className="space-y-3">
                           <div className="flex items-center gap-2 text-sm">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <Clock className="w-4 h-4 text-slate-300" />
                             <span className="font-medium">Available:</span>
-                            <span className="text-muted-foreground">{hotline.available}</span>
+                            <span className="text-slate-300">{hotline.available}</span>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
@@ -410,7 +410,7 @@ ${new Date().toLocaleString()}`;
                                   e.stopPropagation();
                                   handleCall(hotline.phone);
                                 }}
-                                className="bg-gradient-primary"
+                                className="bg-gradient-to-br from-indigo-600 to-rose-500 text-white"
                                 size="sm"
                               >
                                 <Phone className="w-4 h-4 mr-2" />
@@ -424,8 +424,8 @@ ${new Date().toLocaleString()}`;
                                   e.stopPropagation();
                                   handleText(hotline.textNumber!);
                                 }}
-                                variant="outline"
                                 size="sm"
+                                className="bg-slate-700 text-white border border-slate-600 hover:bg-slate-600"
                               >
                                 <MessageCircle className="w-4 h-4 mr-2" />
                                 Text {hotline.textNumber}
@@ -438,8 +438,8 @@ ${new Date().toLocaleString()}`;
                                   e.stopPropagation();
                                   window.open(hotline.website, '_blank');
                                 }}
-                                variant="outline"
                                 size="sm"
+                                className="bg-slate-700 text-white border border-slate-600 hover:bg-slate-600"
                               >
                                 <Globe className="w-4 h-4 mr-2" />
                                 Website
@@ -456,7 +456,7 @@ ${new Date().toLocaleString()}`;
             </div>
 
             {/* International Resources */}
-            <Card className="shadow-medium border-primary/10">
+            <Card className="shadow-medium border-primary/10 bg-slate-800 text-white border border-slate-700">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="w-5 h-5 text-primary" />
@@ -467,18 +467,18 @@ ${new Date().toLocaleString()}`;
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="p-3 bg-muted/50 rounded-lg">
+                  <div className="space-y-3">
+                    <div className="p-3 bg-slate-800 border border-slate-700 rounded-lg">
                     <div className="flex items-center gap-2 mb-1">
                       <MapPin className="w-4 h-4 text-primary" />
                       <span className="font-medium">Find Help Worldwide</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
+                    <p className="text-sm text-slate-300 mb-2">
                       Visit findahelpline.com for crisis support in your country
                     </p>
                     <Button
-                      variant="outline"
                       size="sm"
+                      className="bg-slate-700 text-white border border-slate-600 hover:bg-slate-600"
                       onClick={() => window.open('https://findahelpline.com', '_blank')}
                     >
                       Visit Website
@@ -497,13 +497,13 @@ ${new Date().toLocaleString()}`;
                 <Heart className="w-6 h-6 text-primary" />
                 Immediate Coping Strategies
               </h2>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-slate-300 mb-6">
                 Try these techniques while waiting for support
               </p>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {copingStrategies.map((strategy, index) => (
-                  <Card key={index} className="shadow-medium border-primary/10">
+                  <Card key={index} className="shadow-medium border-primary/10 bg-slate-800 text-white border border-slate-700">
                     <CardHeader>
                       <CardTitle className="text-lg">{strategy.title}</CardTitle>
                       <CardDescription>{strategy.description}</CardDescription>
@@ -522,16 +522,20 @@ ${new Date().toLocaleString()}`;
                 ))}
               </div>
 
-              <Alert className="border-primary/20 bg-primary/5 mt-6">
-                <Heart className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-sm">Remember</AlertTitle>
-                <AlertDescription className="text-xs">
-                  These feelings are temporary. You've gotten through difficult times before, and you can get through this too.
-                </AlertDescription>
+              <Alert className="mt-6 border border-slate-700 bg-slate-800/60 text-slate-300 p-4 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Heart className="h-4 w-4 text-indigo-400 mt-1" />
+                  <div>
+                    <AlertTitle className="text-sm text-slate-100">Remember</AlertTitle>
+                    <AlertDescription className="text-xs text-slate-300">
+                      These feelings are temporary. You've gotten through difficult times before, and you can get through this too.
+                    </AlertDescription>
+                  </div>
+                </div>
               </Alert>
 
               <Button 
-                className="w-full lg:w-auto bg-gradient-primary mt-4"
+                className="w-full lg:w-auto bg-gradient-to-br from-indigo-600 to-rose-500 text-white mt-4"
                 onClick={() => navigate("/ai-therapist")}
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
@@ -542,7 +546,7 @@ ${new Date().toLocaleString()}`;
         </Tabs>
 
         {/* Safety Plan Section */}
-        <Card className="shadow-medium border-primary/10 mt-6">
+        <Card className="shadow-medium border-primary/10 mt-6 bg-slate-800 text-white border border-slate-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" />
@@ -554,26 +558,26 @@ ${new Date().toLocaleString()}`;
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg">
                 <h4 className="font-semibold mb-2">Warning Signs</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-slate-300">
                   Identify thoughts, images, moods, situations that indicate a crisis may be developing
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg">
                 <h4 className="font-semibold mb-2">Coping Strategies</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-slate-300">
                   List activities you can do on your own to take your mind off problems
                 </p>
               </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
+              <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg">
                 <h4 className="font-semibold mb-2">Support Contacts</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-slate-300">
                   Keep a list of people and places that provide support and help
                 </p>
               </div>
             </div>
-            <Button className="mt-4" variant="outline" onClick={downloadSafetyPlan}>
+            <Button className="mt-4 bg-slate-700 text-white border border-slate-600 hover:bg-slate-600" onClick={downloadSafetyPlan}>
               <Mail className="w-4 h-4 mr-2" />
               Download Safety Plan Template
             </Button>

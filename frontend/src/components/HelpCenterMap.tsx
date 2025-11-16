@@ -1,368 +1,278 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  MapPin,
-  Navigation,
-  Phone,
-  Clock,
-  ExternalLink,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { MapPin, Navigation, Phone, Loader2, AlertCircle } from "lucide-react";
+
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Circle } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface HelpCenter {
   id: string;
   name: string;
-  type: "hospital" | "clinic" | "counseling" | "crisis";
-  address: string;
-  phone: string;
-  hours: string;
+  type: string;
+  address?: string;
+  phone?: string;
   lat: number;
   lng: number;
-  distance?: number;
+  distance?: number; // meters
   website?: string;
 }
 
-// Sample help centers (in a real app, this would come from an API or database)
-const sampleHelpCenters: HelpCenter[] = [
-  {
-    id: "1",
-    name: "City Mental Health Center",
-    type: "clinic",
-    address: "123 Main St, Downtown",
-    phone: "(555) 123-4567",
-    hours: "Mon-Fri 9AM-5PM",
-    lat: 40.7128,
-    lng: -74.0060,
-    website: "https://example.com"
-  },
-  {
-    id: "2",
-    name: "Emergency Psychiatric Services",
-    type: "crisis",
-    address: "456 Hospital Ave",
-    phone: "(555) 987-6543",
-    hours: "24/7",
-    lat: 40.7589,
-    lng: -73.9851,
-  },
-  {
-    id: "3",
-    name: "Community Counseling Center",
-    type: "counseling",
-    address: "789 Wellness Blvd",
-    phone: "(555) 456-7890",
-    hours: "Mon-Sat 8AM-8PM",
-    lat: 40.7489,
-    lng: -73.9680,
-  },
-  {
-    id: "4",
-    name: "General Hospital - Psych Ward",
-    type: "hospital",
-    address: "321 Medical Center Dr",
-    phone: "(555) 111-2222",
-    hours: "24/7 Emergency",
-    lat: 40.7306,
-    lng: -73.9352,
-  },
-];
+// Fix Leaflet's default icon path when bundled
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+});
+
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+function MapUpdater({ onMove }: { onMove: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    moveend(e) {
+      const center = e.target.getCenter();
+      onMove(center.lat, center.lng);
+    },
+  });
+  return null;
+}
 
 export const HelpCenterMap = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>(sampleHelpCenters);
-  const [selectedCenter, setSelectedCenter] = useState<HelpCenter | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const mapRef = useRef<any>(null);
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 3959; // Earth's radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+  const defaultCenter = useMemo(() => ({ lat: 20.5937, lng: 78.9629 }), []); // India center fallback
+
+  const metersToMiles = (m: number) => m / 1609.344;
+
+  const fetchNearby = async (lat: number, lng: number, radius = 5000) => {
+    setIsLoading(true);
+    // Overpass QL - search for amenity nodes/ways within radius
+    const query = `[
+      out:json][timeout:25];
+      (
+        node(around:${radius},${lat},${lng})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+        way(around:${radius},${lat},${lng})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+        relation(around:${radius},${lat},${lng})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+      );
+      out center 20;`;
+
+    try {
+      const resp = await fetch(OVERPASS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      const data = await resp.json();
+      if (!data.elements) {
+        setHelpCenters([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const centers: HelpCenter[] = data.elements
+        .map((el: any) => {
+          const latVal = el.lat ?? el.center?.lat;
+          const lonVal = el.lon ?? el.center?.lon;
+          if (!latVal || !lonVal) return null;
+          const tags = el.tags || {};
+          return {
+            id: `${el.type}-${el.id}`,
+            name: tags.name || tags.operator || tags.official_name || (tags.amenity || "Unknown"),
+            type: tags.amenity || "unknown",
+            address: [tags['addr:street'], tags['addr:housenumber'], tags['addr:city']].filter(Boolean).join(", "),
+            phone: tags['contact:phone'] || tags.phone || undefined,
+            website: tags.website || tags.url || undefined,
+            lat: latVal,
+            lng: lonVal,
+          } as HelpCenter;
+        })
+        .filter(Boolean);
+
+      // compute distance
+      const withDistance = centers.map((c) => ({
+        ...c,
+        distance: Math.round(
+          (Math.hypot(c.lat - lat, c.lng - lng) * 111320) // approx meters
+        ),
+      }));
+
+      withDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      setHelpCenters(withDistance);
+      setIsLoading(false);
+    } catch (err) {
+      setIsLoading(false);
+      console.error("Overpass fetch error", err);
+      toast({ title: "Map error", description: "Unable to fetch nearby locations", variant: "destructive" });
+    }
   };
 
-  const getUserLocation = () => {
-    setIsLoadingLocation(true);
-    setLocationError(null);
-
+  const requestLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser");
-      setIsLoadingLocation(false);
-      toast({
-        title: "Location not available",
-        description: "Your browser doesn't support geolocation",
-        variant: "destructive",
-      });
+      toast({ title: "Location not available", description: "Geolocation not supported", variant: "destructive" });
       return;
     }
-
+    setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const location = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setUserLocation(location);
-
-        // Calculate distances and sort by nearest
-        const centersWithDistance = helpCenters.map((center) => ({
-          ...center,
-          distance: calculateDistance(
-            location.lat,
-            location.lng,
-            center.lat,
-            center.lng
-          ),
-        }));
-
-        centersWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-        setHelpCenters(centersWithDistance);
-        setIsLoadingLocation(false);
-
-        toast({
-          title: "Location found!",
-          description: "Showing help centers near you",
-        });
-      },
-      (error) => {
-        setIsLoadingLocation(false);
-        let errorMessage = "Unable to get your location";
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = "Location permission denied. Please enable location access.";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = "Location information unavailable";
-            break;
-          case error.TIMEOUT:
-            errorMessage = "Location request timed out";
-            break;
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        // center map
+        if (mapRef.current) {
+          mapRef.current.setView([loc.lat, loc.lng], 14);
         }
-
-        setLocationError(errorMessage);
-        toast({
-          title: "Location error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      }
+        fetchNearby(loc.lat, loc.lng, 5000);
+      },
+      (err) => {
+        setIsLoading(false);
+        toast({ title: "Location error", description: err.message || "Unable to get location", variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  const getDirections = (center: HelpCenter) => {
-    const destination = `${center.lat},${center.lng}`;
-    const url = userLocation
-      ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination}`
-      : `https://www.google.com/maps/search/?api=1&query=${destination}`;
+  useEffect(() => {
+    // initial fetch at default center
+    fetchNearby(defaultCenter.lat, defaultCenter.lng, 8000);
+  }, [defaultCenter.lat, defaultCenter.lng]);
+
+  const handleMapMove = (lat: number, lng: number) => {
+    fetchNearby(lat, lng, 5000);
+  };
+
+  const openDirections = (c: HelpCenter) => {
+    const dest = `${c.lat},${c.lng}`;
+    const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : undefined;
+    const url = origin
+      ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}`
+      : `https://www.google.com/maps/search/?api=1&query=${dest}`;
     window.open(url, "_blank");
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "crisis":
-        return "bg-red-500 text-white";
-      case "hospital":
-        return "bg-blue-500 text-white";
-      case "clinic":
-        return "bg-green-500 text-white";
-      case "counseling":
-        return "bg-purple-500 text-white";
-      default:
-        return "bg-gray-500 text-white";
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "crisis":
-        return "Crisis Center";
-      case "hospital":
-        return "Hospital";
-      case "clinic":
-        return "Mental Health Clinic";
-      case "counseling":
-        return "Counseling Center";
-      default:
-        return type;
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Location Request Card */}
-      <Card className="shadow-medium border-primary/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            Find Nearby Help Centers
-          </CardTitle>
-          <CardDescription>
-            Locate mental health facilities and crisis centers near you
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!userLocation ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Enable location access to find the nearest mental health facilities and get directions.
-              </p>
-              <Button
-                onClick={getUserLocation}
-                disabled={isLoadingLocation}
-                className="bg-gradient-primary"
-              >
-                {isLoadingLocation ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Getting Location...
-                  </>
-                ) : (
-                  <>
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Use My Location
-                  </>
-                )}
-              </Button>
-              {locationError && (
-                <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
-                  <p className="text-sm text-destructive">{locationError}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-muted-foreground">
-                  Location enabled • Showing {helpCenters.length} nearby centers
-                </span>
-              </div>
-              <Button variant="outline" size="sm" onClick={getUserLocation}>
-                <Navigation className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
+    <div className="flex flex-col lg:flex-row gap-4">
+      <div className="lg:w-2/3 h-96 lg:h-[600px] rounded-lg overflow-hidden shadow-md bg-slate-900">
+        <MapContainer
+          center={[userLocation?.lat ?? defaultCenter.lat, userLocation?.lng ?? defaultCenter.lng]}
+          zoom={userLocation ? 14 : 6}
+          style={{ height: "100%", width: "100%" }}
+          whenCreated={(mapInstance) => (mapRef.current = mapInstance)}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <MapUpdater onMove={handleMapMove} />
+          {userLocation && (
+            <>
+              <Marker position={[userLocation.lat, userLocation.lng]}>
+                <Popup>You are here</Popup>
+              </Marker>
+              <Circle center={[userLocation.lat, userLocation.lng]} radius={1000} pathOptions={{ color: "#60A5FA" }} />
+            </>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Help Centers List */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-primary" />
-          {userLocation ? "Nearest Help Centers" : "Available Help Centers"}
-        </h3>
-
-        {helpCenters.map((center) => (
-          <Card
-            key={center.id}
-            className={`shadow-medium transition-all cursor-pointer hover:shadow-glow ${
-              selectedCenter?.id === center.id
-                ? "border-2 border-primary"
-                : "border border-primary/10"
-            }`}
-            onClick={() => setSelectedCenter(center)}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CardTitle className="text-lg">{center.name}</CardTitle>
-                    <Badge className={getTypeColor(center.type)}>
-                      {getTypeLabel(center.type)}
-                    </Badge>
-                  </div>
-                  {center.distance !== undefined && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-                      <Navigation className="w-4 h-4" />
-                      <span className="font-medium">
-                        {center.distance.toFixed(1)} miles away
-                      </span>
-                    </div>
-                  )}
-                  <div className="space-y-1 text-sm">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                      <span className="text-muted-foreground">{center.address}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{center.hours}</span>
-                    </div>
+          {helpCenters.map((c) => (
+            <Marker key={c.id} position={[c.lat, c.lng]} eventHandlers={{ click: () => setSelected(c.id) }}>
+              <Popup>
+                <div className="min-w-[180px]">
+                  <strong>{c.name}</strong>
+                  <div className="text-xs text-muted-foreground">{c.type}</div>
+                  {c.address && <div className="text-xs">{c.address}</div>}
+                  <div className="mt-2 flex gap-2">
+                    {c.phone && (
+                      <Button size="sm" onClick={() => (window.location.href = `tel:${c.phone}`)}>
+                        <Phone className="w-3 h-3 mr-1" />
+                        Call
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openDirections(c)}>
+                      <Navigation className="w-3 h-3 mr-1" />
+                      Directions
+                    </Button>
                   </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.location.href = `tel:${center.phone}`;
-                  }}
-                  className="bg-gradient-primary"
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call {center.phone}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    getDirections(center);
-                  }}
-                >
-                  <Navigation className="w-4 h-4 mr-2" />
-                  Get Directions
-                </Button>
-                {center.website && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(center.website, "_blank");
-                    }}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Website
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
       </div>
 
-      {/* Info Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-primary mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Important Information</p>
-              <p className="text-xs text-muted-foreground">
-                These locations are for reference. Always call ahead to confirm hours and availability.
-                In case of emergency, call 911 or go to your nearest emergency room.
-              </p>
+      <div className="lg:w-1/3 space-y-3">
+        <Card className="p-4 bg-gradient-to-b from-slate-800 to-slate-900 text-white border-0">
+          <CardHeader className="p-0 mb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MapPin /> Nearby Services
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm text-slate-300">Showing nearby hospitals, clinics and welfare centres</div>
+              <div>
+                <Button size="sm" onClick={requestLocation} className="bg-gradient-to-r from-primary to-emerald-500 text-white">
+                  <Navigation className="w-4 h-4 mr-1" />
+                  {isLoading ? "Locating..." : "Use My Location"}
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="max-h-[460px] overflow-auto space-y-2">
+              {helpCenters.length === 0 && !isLoading && (
+                <div className="text-sm text-slate-400">No nearby services found in this area.</div>
+              )}
+              {isLoading && (
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Loader2 className="animate-spin" /> Searching nearby...
+                </div>
+              )}
+
+              {helpCenters.map((c) => (
+                <div
+                  key={c.id}
+                  className={`p-3 rounded-lg cursor-pointer border ${selected === c.id ? "border-primary" : "border-slate-700"} bg-slate-800`}
+                  onClick={() => {
+                    setSelected(c.id);
+                    mapRef.current?.setView([c.lat, c.lng], 16);
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">{c.name}</div>
+                      <div className="text-xs text-slate-300">{c.type}</div>
+                    </div>
+                    <div className="text-xs text-slate-400">{c.distance ? `${(c.distance/1000).toFixed(1)} km` : ''}</div>
+                  </div>
+                  {c.address && <div className="text-xs text-slate-300 mt-1">{c.address}</div>}
+                  <div className="mt-2 flex gap-2">
+                    {c.phone && (
+                      <Button size="sm" onClick={() => (window.location.href = `tel:${c.phone}`)}>
+                        Call
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openDirections(c)}>
+                      Directions
+                    </Button>
+                    {c.website && (
+                      <Button size="sm" variant="outline" onClick={() => window.open(c.website, "_blank")}>Website</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="p-4 bg-slate-900 text-slate-300 border-0">
+          <CardContent className="p-0">
+            <div className="text-xs">These results come from OpenStreetMap (Overpass API). Verify before acting. In emergencies call local services.</div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

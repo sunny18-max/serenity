@@ -1,633 +1,237 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  MapPin,
-  Navigation,
-  Phone,
-  Clock,
-  Search,
-  Loader2,
-  ExternalLink,
-  Filter,
-  X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { MapPin, Navigation, Phone, Loader2 } from "lucide-react";
+
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Circle } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface HelpCenter {
   id: string;
   name: string;
-  type: "hospital" | "clinic" | "counseling" | "crisis";
-  address: string;
-  city: string;
-  country: string;
-  phone: string;
-  hours: string;
+  type: string;
+  address?: string;
+  phone?: string;
   lat: number;
   lng: number;
   distance?: number;
   website?: string;
-  services: string[];
 }
 
-// Worldwide help centers database
-const worldwideHelpCenters: HelpCenter[] = [
-  // United States
-  {
-    id: "us-1",
-    name: "NYC Mental Health Center",
-    type: "clinic",
-    address: "123 Broadway",
-    city: "New York",
-    country: "United States",
-    phone: "+1 (212) 555-0100",
-    hours: "Mon-Fri 9AM-6PM",
-    lat: 40.7128,
-    lng: -74.0060,
-    website: "https://example.com",
-    services: ["Therapy", "Psychiatry", "Crisis Support"]
-  },
-  {
-    id: "us-2",
-    name: "LA Crisis Center",
-    type: "crisis",
-    address: "456 Sunset Blvd",
-    city: "Los Angeles",
-    country: "United States",
-    phone: "+1 (323) 555-0200",
-    hours: "24/7",
-    lat: 34.0522,
-    lng: -118.2437,
-    services: ["24/7 Crisis", "Emergency Care"]
-  },
-  {
-    id: "us-3",
-    name: "Chicago Counseling Center",
-    type: "counseling",
-    address: "789 Michigan Ave",
-    city: "Chicago",
-    country: "United States",
-    phone: "+1 (312) 555-0300",
-    hours: "Mon-Sat 8AM-8PM",
-    lat: 41.8781,
-    lng: -87.6298,
-    services: ["Individual Therapy", "Group Therapy"]
-  },
-  // United Kingdom
-  {
-    id: "uk-1",
-    name: "London Mental Health Trust",
-    type: "hospital",
-    address: "10 Harley Street",
-    city: "London",
-    country: "United Kingdom",
-    phone: "+44 20 7946 0958",
-    hours: "24/7",
-    lat: 51.5074,
-    lng: -0.1278,
-    services: ["Emergency Care", "Inpatient", "Outpatient"]
-  },
-  {
-    id: "uk-2",
-    name: "Manchester Crisis Support",
-    type: "crisis",
-    address: "25 Oxford Road",
-    city: "Manchester",
-    country: "United Kingdom",
-    phone: "+44 161 555 0100",
-    hours: "24/7",
-    lat: 53.4808,
-    lng: -2.2426,
-    services: ["Crisis Intervention", "Helpline"]
-  },
-  // Canada
-  {
-    id: "ca-1",
-    name: "Toronto Mental Health Services",
-    type: "clinic",
-    address: "100 Queen Street",
-    city: "Toronto",
-    country: "Canada",
-    phone: "+1 (416) 555-0400",
-    hours: "Mon-Fri 9AM-5PM",
-    lat: 43.6532,
-    lng: -79.3832,
-    services: ["Assessment", "Treatment", "Support Groups"]
-  },
-  {
-    id: "ca-2",
-    name: "Vancouver Crisis Centre",
-    type: "crisis",
-    address: "1234 Granville St",
-    city: "Vancouver",
-    country: "Canada",
-    phone: "+1 (604) 555-0500",
-    hours: "24/7",
-    lat: 49.2827,
-    lng: -123.1207,
-    services: ["Crisis Line", "Walk-in Support"]
-  },
-  // Australia
-  {
-    id: "au-1",
-    name: "Sydney Mental Health Hub",
-    type: "clinic",
-    address: "50 George Street",
-    city: "Sydney",
-    country: "Australia",
-    phone: "+61 2 5550 0600",
-    hours: "Mon-Fri 8AM-6PM",
-    lat: -33.8688,
-    lng: 151.2093,
-    services: ["Counseling", "Psychiatry", "Support"]
-  },
-  {
-    id: "au-2",
-    name: "Melbourne Crisis Support",
-    type: "crisis",
-    address: "123 Collins Street",
-    city: "Melbourne",
-    country: "Australia",
-    phone: "+61 3 5550 0700",
-    hours: "24/7",
-    lat: -37.8136,
-    lng: 144.9631,
-    services: ["Emergency Support", "Crisis Counseling"]
-  },
-  // India
-  {
-    id: "in-1",
-    name: "Mumbai Mental Wellness Center",
-    type: "clinic",
-    address: "45 Marine Drive",
-    city: "Mumbai",
-    country: "India",
-    phone: "+91 22 5550 0800",
-    hours: "Mon-Sat 9AM-7PM",
-    lat: 19.0760,
-    lng: 72.8777,
-    services: ["Therapy", "Counseling", "Family Support"]
-  },
-  {
-    id: "in-2",
-    name: "Delhi Crisis Helpline",
-    type: "crisis",
-    address: "10 Connaught Place",
-    city: "New Delhi",
-    country: "India",
-    phone: "+91 11 5550 0900",
-    hours: "24/7",
-    lat: 28.6139,
-    lng: 77.2090,
-    services: ["24/7 Helpline", "Emergency Support"]
-  },
-  // Germany
-  {
-    id: "de-1",
-    name: "Berlin Mental Health Clinic",
-    type: "clinic",
-    address: "Unter den Linden 1",
-    city: "Berlin",
-    country: "Germany",
-    phone: "+49 30 5550 1000",
-    hours: "Mon-Fri 9AM-6PM",
-    lat: 52.5200,
-    lng: 13.4050,
-    services: ["Psychotherapy", "Psychiatric Care"]
-  },
-  // France
-  {
-    id: "fr-1",
-    name: "Paris Mental Health Center",
-    type: "clinic",
-    address: "10 Avenue des Champs-Élysées",
-    city: "Paris",
-    country: "France",
-    phone: "+33 1 5550 1100",
-    hours: "Mon-Fri 9AM-6PM",
-    lat: 48.8566,
-    lng: 2.3522,
-    services: ["Consultation", "Therapy", "Support"]
-  },
-  // Japan
-  {
-    id: "jp-1",
-    name: "Tokyo Mental Health Clinic",
-    type: "clinic",
-    address: "1-1-1 Shibuya",
-    city: "Tokyo",
-    country: "Japan",
-    phone: "+81 3 5550 1200",
-    hours: "Mon-Sat 9AM-7PM",
-    lat: 35.6762,
-    lng: 139.6503,
-    services: ["Counseling", "Psychiatric Services"]
-  },
-  // Brazil
-  {
-    id: "br-1",
-    name: "São Paulo Mental Health Center",
-    type: "clinic",
-    address: "Avenida Paulista 1000",
-    city: "São Paulo",
-    country: "Brazil",
-    phone: "+55 11 5550 1300",
-    hours: "Mon-Fri 8AM-6PM",
-    lat: -23.5505,
-    lng: -46.6333,
-    services: ["Therapy", "Support Groups", "Crisis Support"]
-  },
-];
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+});
+
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+
+function MapUpdater({ onMove }: { onMove: (centerLat: number, centerLng: number, bounds: L.LatLngBounds, zoom: number) => void }) {
+  useMapEvents({ moveend(e) { const map = e.target; const c = map.getCenter(); onMove(c.lat, c.lng, map.getBounds(), map.getZoom()); } });
+  return null;
+}
 
 export const InteractiveHelpMap = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>(worldwideHelpCenters);
-  const [filteredCenters, setFilteredCenters] = useState<HelpCenter[]>(worldwideHelpCenters);
-  const [selectedCenter, setSelectedCenter] = useState<HelpCenter | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
-  const [mapCenter, setMapCenter] = useState({ lat: 20, lng: 0, zoom: 2 });
+  const [helpCenters, setHelpCenters] = useState<HelpCenter[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const mapRef = useRef<any>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    filterCenters();
-  }, [searchQuery, selectedType, helpCenters]);
+  const defaultCenter = useMemo(() => ({ lat: 20.5937, lng: 78.9629 }), []);
 
-  // Auto-detect location on component mount
-  useEffect(() => {
-    getUserLocation();
-  }, []);
-
-  const filterCenters = () => {
-    let filtered = helpCenters;
-
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (center) =>
-          center.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          center.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          center.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          center.address.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedType) {
-      filtered = filtered.filter((center) => center.type === selectedType);
-    }
-
-    setFilteredCenters(filtered);
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 3959;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const getUserLocation = () => {
-    setIsLoadingLocation(true);
-
-    if (!navigator.geolocation) {
-      toast({
-        title: "Location not available",
-        description: "Your browser doesn't support geolocation",
-        variant: "destructive",
-      });
-      setIsLoadingLocation(false);
+  const fetchNearbyByBBox = async (bounds: L.LatLngBounds, centerLat: number, centerLng: number, zoom: number, tryExpanded = true, expandFactor = 1) => {
+    // Avoid huge global queries — require a minimum zoom
+    if (zoom < 5) {
+      setHelpCenters([]);
+      setIsLoading(false);
+      toast({ title: 'Zoom in', description: 'Please zoom in to search for nearby services in this area.', });
       return;
     }
+    // Cancel previous fetch
+    if (fetchAbortRef.current) {
+      try { fetchAbortRef.current.abort(); } catch (_) {}
+    }
+    const ac = new AbortController();
+    fetchAbortRef.current = ac;
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const location = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setUserLocation(location);
-        setMapCenter({ lat: location.lat, lng: location.lng, zoom: 12 });
+    setIsLoading(true);
 
-        const centersWithDistance = helpCenters.map((center) => ({
-          ...center,
-          distance: calculateDistance(location.lat, location.lng, center.lat, center.lng),
-        }));
+    // expand bounds slightly if requested
+    const south = bounds.getSouth();
+    const north = bounds.getNorth();
+    const west = bounds.getWest();
+    const east = bounds.getEast();
+    // expand bbox by factor around center
+    const latPad = (north - south) * (expandFactor - 1) * 0.5;
+    const lngPad = (east - west) * (expandFactor - 1) * 0.5;
+    const s = south - latPad;
+    const n = north + latPad;
+    const w = west - lngPad;
+    const e = east + lngPad;
 
-        centersWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
-        setHelpCenters(centersWithDistance);
-        setIsLoadingLocation(false);
+    const bboxStr = `${s},${w},${n},${e}`;
 
-        toast({
-          title: "Location found!",
-          description: "Showing help centers near you",
-        });
-      },
-      () => {
-        setIsLoadingLocation(false);
-        toast({
-          title: "Location error",
-          description: "Unable to get your location",
-          variant: "destructive",
-        });
+    const query = `[
+      out:json][timeout:25];
+      (
+        node(${bboxStr})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+        way(${bboxStr})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+        relation(${bboxStr})[amenity~"hospital|clinic|doctors|social_facility|pharmacy|asylum|healthcare"];
+      );
+      out center 50;`;
+
+    try {
+      const resp = await fetch(OVERPASS_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" }, body: `data=${encodeURIComponent(query)}`, signal: ac.signal });
+      if (!resp.ok) throw new Error(`Overpass error ${resp.status}`);
+      const data = await resp.json();
+      const centers: HelpCenter[] = (data.elements || []).map((el: any) => {
+        const latVal = el.lat ?? el.center?.lat; const lonVal = el.lon ?? el.center?.lon; if (!latVal || !lonVal) return null;
+        const tags = el.tags || {};
+        return {
+          id: `${el.type}-${el.id}`,
+          name: tags.name || tags.operator || tags.amenity || "Unknown",
+          type: tags.amenity || "unknown",
+          address: [tags['addr:street'], tags['addr:housenumber'], tags['addr:city']].filter(Boolean).join(', '),
+          phone: tags['contact:phone'] || tags.phone || undefined,
+          website: tags.website || tags.url || undefined,
+          lat: latVal,
+          lng: lonVal,
+        } as HelpCenter;
+      }).filter(Boolean);
+
+      const withDistance = centers.map(c => ({ ...c, distance: Math.round(Math.hypot(c.lat - centerLat, c.lng - centerLng) * 111320) }));
+      withDistance.sort((a,b) => (a.distance||0)-(b.distance||0));
+      if (withDistance.length === 0 && tryExpanded && expandFactor < 4) {
+        // expand bbox and retry (up to a few times)
+        fetchNearbyByBBox(bounds, centerLat, centerLng, zoom, true, expandFactor * 2);
+        return;
       }
-    );
-  };
-
-  const focusOnCenter = (center: HelpCenter) => {
-    setSelectedCenter(center);
-    setMapCenter({ lat: center.lat, lng: center.lng, zoom: 15 });
-  };
-
-  const getDirections = (center: HelpCenter) => {
-    const destination = `${center.lat},${center.lng}`;
-    const url = userLocation
-      ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination}`
-      : `https://www.google.com/maps/search/?api=1&query=${destination}`;
-    window.open(url, "_blank");
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "crisis":
-        return "bg-red-500 text-white";
-      case "hospital":
-        return "bg-blue-500 text-white";
-      case "clinic":
-        return "bg-green-500 text-white";
-      case "counseling":
-        return "bg-purple-500 text-white";
-      default:
-        return "bg-gray-500 text-white";
+      setHelpCenters(withDistance);
+      setIsLoading(false);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return;
+      }
+      console.error(err);
+      setIsLoading(false);
+      toast({ title: 'Map error', description: 'Unable to fetch nearby locations', variant: 'destructive' });
     }
   };
 
-  const getMapUrl = () => {
-    const markers = filteredCenters
-      .slice(0, 20)
-      .map((center) => `${center.lat},${center.lng}`)
-      .join("|");
-    
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${mapCenter.lng - 1},${mapCenter.lat - 1},${mapCenter.lng + 1},${mapCenter.lat + 1}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`;
+  useEffect(() => {
+    // Try to get user location on mount; fall back to default center
+    if (navigator.geolocation) {
+        const got = (pos: GeolocationPosition) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          try { mapRef.current?.setView([loc.lat, loc.lng], 13); } catch (_) {}
+          const map = mapRef.current;
+          if (map) {
+            fetchNearbyByBBox(map.getBounds(), loc.lat, loc.lng, map.getZoom());
+          } else {
+            const fakeBounds = L.latLngBounds([loc.lat - 0.05, loc.lng - 0.05], [loc.lat + 0.05, loc.lng + 0.05]);
+            fetchNearbyByBBox(fakeBounds, loc.lat, loc.lng, 13);
+          }
+        };
+        const onerr = () => {
+          // fallback
+          const map = mapRef.current;
+          if (map) {
+            fetchNearbyByBBox(map.getBounds(), defaultCenter.lat, defaultCenter.lng, map.getZoom());
+          } else {
+            const fakeBounds = L.latLngBounds([defaultCenter.lat - 0.5, defaultCenter.lng - 0.5], [defaultCenter.lat + 0.5, defaultCenter.lng + 0.5]);
+            fetchNearbyByBBox(fakeBounds, defaultCenter.lat, defaultCenter.lng, 6);
+          }
+        };
+      navigator.geolocation.getCurrentPosition(got, onerr, { timeout: 5000 });
+    } else {
+      const map = mapRef.current;
+      if (map) {
+        fetchNearbyByBBox(map.getBounds(), defaultCenter.lat, defaultCenter.lng, map.getZoom());
+      } else {
+        const fakeBounds = L.latLngBounds([defaultCenter.lat - 0.5, defaultCenter.lng - 0.5], [defaultCenter.lat + 0.5, defaultCenter.lng + 0.5]);
+        fetchNearbyByBBox(fakeBounds, defaultCenter.lat, defaultCenter.lng, 6);
+      }
+    }
+  }, [defaultCenter.lat, defaultCenter.lng]);
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) { toast({ title: 'Location not available', description: 'Geolocation not supported', variant: 'destructive' }); return; }
+    setIsLoading(true);
+    navigator.geolocation.getCurrentPosition(pos => { const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }; setUserLocation(loc); mapRef.current?.setView([loc.lat, loc.lng], 14); const map = mapRef.current; if (map) { fetchNearbyByBBox(map.getBounds(), loc.lat, loc.lng, map.getZoom()); } else { const fakeBounds = L.latLngBounds([loc.lat - 0.05, loc.lng - 0.05], [loc.lat + 0.05, loc.lng + 0.05]); fetchNearbyByBBox(fakeBounds, loc.lat, loc.lng, 13); } }, err => { setIsLoading(false); toast({ title: 'Location error', description: err.message || 'Unable to get location', variant: 'destructive' }); }, { enableHighAccuracy: true, timeout: 10000 });
   };
+
+  const handleMapMove = (lat:number,lng:number) => {
+    // debounce rapid map moves and abort inflight requests
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      // we need bounds and zoom; try to get them from mapRef
+      const map = mapRef.current;
+      if (map) {
+        fetchNearbyByBBox(map.getBounds(), lat, lng, map.getZoom());
+      } else {
+        const fakeBounds = L.latLngBounds([lat - 0.05, lng - 0.05], [lat + 0.05, lng + 0.05]);
+        fetchNearbyByBBox(fakeBounds, lat, lng, 13);
+      }
+      debounceRef.current = null;
+    }, 450);
+  };
+
+  const openDirections = (c: HelpCenter) => { const dest = `${c.lat},${c.lng}`; const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : undefined; const url = origin ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}` : `https://www.google.com/maps/search/?api=1&query=${dest}`; window.open(url,'_blank'); };
 
   return (
     <div className="w-full h-full">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 h-[calc(100vh-200px)] min-h-[600px]">
-        {/* Sidebar with Search and List */}
-        <div className="xl:col-span-1 flex flex-col gap-4 h-full">
-          {/* Search and Filters */}
-          <Card className="flex-shrink-0">
-            <CardContent className="p-4 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by city, country, or name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={selectedType === null ? "default" : "outline"}
-                onClick={() => setSelectedType(null)}
-              >
-                All
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedType === "crisis" ? "default" : "outline"}
-                onClick={() => setSelectedType("crisis")}
-                className={selectedType === "crisis" ? "bg-red-500" : ""}
-              >
-                Crisis
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedType === "hospital" ? "default" : "outline"}
-                onClick={() => setSelectedType("hospital")}
-                className={selectedType === "hospital" ? "bg-blue-500" : ""}
-              >
-                Hospital
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedType === "clinic" ? "default" : "outline"}
-                onClick={() => setSelectedType("clinic")}
-                className={selectedType === "clinic" ? "bg-green-500" : ""}
-              >
-                Clinic
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedType === "counseling" ? "default" : "outline"}
-                onClick={() => setSelectedType("counseling")}
-                className={selectedType === "counseling" ? "bg-purple-500" : ""}
-              >
-                Counseling
-              </Button>
-            </div>
-
-            <Button
-              onClick={getUserLocation}
-              disabled={isLoadingLocation}
-              className="w-full btn-enhanced"
-              size="sm"
-            >
-              {isLoadingLocation ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Getting Location...
-                </>
-              ) : (
-                <>
-                  <Navigation className="w-4 h-4 mr-2" />
-                  Use My Location
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Help Centers List */}
-        <Card className="flex-1 overflow-hidden">
-          <CardContent className="p-4 h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium">
-                {filteredCenters.length} Help Centers
-              </p>
-              {userLocation && (
-                <Badge variant="outline" className="text-xs">
-                  <Navigation className="w-3 h-3 mr-1" />
-                  Sorted by distance
-                </Badge>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-              {filteredCenters.map((center) => (
-                <Card
-                  key={center.id}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-lg border-0 bg-card/70 backdrop-blur-sm",
-                    selectedCenter?.id === center.id && "ring-2 ring-primary"
-                  )}
-                  onClick={() => focusOnCenter(center)}
-                >
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-sm leading-tight">{center.name}</h3>
-                        <Badge className={cn("text-xs flex-shrink-0", getTypeColor(center.type))}>
-                          {center.type}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
-                        <div className="flex items-start gap-1.5">
-                          <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                          <span className="leading-tight">{center.city}, {center.country}</span>
-                        </div>
-                        {center.distance !== undefined && (
-                          <div className="flex items-center gap-1.5 font-medium text-primary">
-                            <Navigation className="w-3 h-3 flex-shrink-0" />
-                            <span>{center.distance.toFixed(1)} miles away</span>
-                          </div>
-                        )}
-                        <div className="flex items-start gap-1.5">
-                          <Clock className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                          <span className="leading-tight">{center.hours}</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 pt-1">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `tel:${center.phone}`;
-                          }}
-                          className="flex-1 h-8 text-xs btn-enhanced"
-                        >
-                          <Phone className="w-3 h-3 mr-1" />
-                          Call
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            getDirections(center);
-                          }}
-                          className="flex-1 h-8 text-xs btn-enhanced"
-                        >
-                          <Navigation className="w-3 h-3 mr-1" />
-                          Directions
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Map View */}
-      <div className="xl:col-span-3 relative">
-        <Card className="h-full">
-          <CardContent className="p-0 h-full relative">
-            <iframe
-              src={getMapUrl()}
-              className="w-full h-full rounded-lg"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Help Centers Map"
-            />
-            {selectedCenter && (
-              <div className="absolute bottom-4 left-4 right-4 bg-card/95 dark:bg-card/95 backdrop-blur-sm p-6 rounded-xl shadow-2xl border border-border max-w-2xl mx-auto">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-lg leading-tight mb-2">{selectedCenter.name}</h3>
-                    <Badge className={cn("text-xs", getTypeColor(selectedCenter.type))}>
-                      {selectedCenter.type}
-                    </Badge>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setSelectedCenter(null)}
-                    className="flex-shrink-0 btn-enhanced"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="space-y-3 text-sm mb-6">
-                  <p className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5 text-primary" />
-                    <span className="leading-tight">{selectedCenter.address}, {selectedCenter.city}, {selectedCenter.country}</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 flex-shrink-0 text-primary" />
-                    <span>{selectedCenter.phone}</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 flex-shrink-0 text-primary" />
-                    <span>{selectedCenter.hours}</span>
-                  </p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {selectedCenter.services.map((service, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {service}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={() => window.location.href = `tel:${selectedCenter.phone}`}
-                    className="flex-1 btn-enhanced min-w-[120px]"
-                    size="sm"
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    Call Now
-                  </Button>
-                  <Button
-                    onClick={() => getDirections(selectedCenter)}
-                    variant="outline"
-                    className="flex-1 min-w-[120px] btn-enhanced"
-                    size="sm"
-                  >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Directions
-                  </Button>
-                  {selectedCenter.website && (
-                    <Button
-                      onClick={() => window.open(selectedCenter.website, "_blank")}
-                      variant="outline"
-                      size="sm"
-                      className="btn-enhanced"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-220px)] min-h-[520px]">
+        <div className="lg:col-span-1 flex flex-col gap-4 h-full">
+          <Card className="p-4 bg-slate-900 text-white border-0">
+            <CardHeader className="p-0 mb-2"><CardTitle className="flex items-center gap-2"><MapPin /> Nearby Services</CardTitle></CardHeader>
+            <CardContent className="p-0">
+                <div className="flex items-center justify-between p-4">
+                <div className="text-sm text-slate-300">Showing nearby hospitals, clinics and welfare centres</div>
+                <Button size="sm" onClick={requestLocation} className="bg-gradient-to-br from-indigo-600 to-emerald-400 text-white hover:opacity-95">{isLoading? 'Locating...' : 'Use My Location'}</Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="max-h-[420px] overflow-auto p-4 space-y-2">
+                {isLoading && <div className="flex items-center gap-2 text-sm text-slate-300"><Loader2 className="animate-spin" /> Searching nearby...</div>}
+                {!isLoading && helpCenters.length===0 && <div className="text-sm text-slate-400">No nearby services found.</div>}
+                {helpCenters.map(c => (
+                  <div key={c.id} className={`p-3 rounded-lg cursor-pointer border ${selected===c.id? 'border-primary':'border-slate-700'} bg-slate-800`} onClick={() => { setSelected(c.id); mapRef.current?.setView([c.lat,c.lng],16); }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-white">{c.name}</div>
+                        <div className="text-xs text-slate-300">{c.type}</div>
+                      </div>
+                      <div className="text-xs text-slate-400">{c.distance? `${(c.distance/1000).toFixed(1)} km`:''}</div>
+                    </div>
+                    {c.address && <div className="text-xs text-slate-300 mt-1">{c.address}</div>}
+                    <div className="mt-2 flex gap-2">
+                      {c.phone && <Button size="sm" onClick={() => window.location.href = `tel:${c.phone}`} className="bg-indigo-600 text-white px-3 py-1 text-sm rounded-md">Call</Button>}
+                      <Button size="sm" variant="outline" onClick={() => openDirections(c)} className="border border-slate-600 text-white px-3 py-1 text-sm rounded-md bg-transparent">Directions</Button>
+                      {c.website && <Button size="sm" variant="outline" onClick={() => window.open(c.website,'_blank')} className="border border-slate-600 text-white px-3 py-1 text-sm rounded-md bg-transparent">Website</Button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-2 h-full rounded-lg overflow-hidden shadow-md bg-slate-900">
+          <MapContainer center={[defaultCenter.lat, defaultCenter.lng]} zoom={6} style={{height:'100%', width:'100%'}} whenCreated={(m)=>mapRef.current=m}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapUpdater onMove={handleMapMove} />
+            {userLocation && <><Marker position={[userLocation.lat,userLocation.lng]}><Popup>You are here</Popup></Marker><Circle center={[userLocation.lat,userLocation.lng]} radius={1000} pathOptions={{color:'#60A5FA'}}/></>}
+            {helpCenters.map(c=> <Marker key={c.id} position={[c.lat,c.lng]} eventHandlers={{click:()=>setSelected(c.id)}}><Popup><div><strong>{c.name}</strong><div className="text-xs">{c.type}</div>{c.address && <div className="text-xs">{c.address}</div>}<div className="mt-2 flex gap-2">{c.phone && <Button size="sm" onClick={()=>window.location.href=`tel:${c.phone}`} className="bg-indigo-600 text-white px-3 py-1 text-sm rounded-md">Call</Button>}<Button size="sm" variant="outline" onClick={()=>openDirections(c)} className="border border-slate-600 text-white px-3 py-1 text-sm rounded-md bg-transparent">Directions</Button></div></div></Popup></Marker>)}
+          </MapContainer>
+        </div>
       </div>
-    </div>
     </div>
   );
 };

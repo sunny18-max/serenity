@@ -73,7 +73,14 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.181.1",
     "vaul": "^0.9.9",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "leaflet": "^1.9.4",
+    "react-leaflet": "^4.2.0"
+  },
+  "dependenciesMeta": {
+    "leaflet": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
