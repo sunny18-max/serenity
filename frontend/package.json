@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "npm i @rollup/rollup-linux-x64-gnu@latest --no-save || true"
+    "postinstall": "npm i @rollup/rollup-linux-x64-gnu@latest @esbuild/linux-x64@latest --no-save || true"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
