@@ -1,13 +1,14 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": null,
-  "rewrites": [
+  "devCommand": "npm run dev", 
+  "installCommand": "npm install --legacy-peer-deps && npm i @esbuild/linux-x64@latest @rollup/rollup-linux-x64-gnu@latest --no-save || true",
+  "framework": "vite",
+  "routes": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
