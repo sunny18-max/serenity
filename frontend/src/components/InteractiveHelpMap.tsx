@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,8 +30,22 @@ L.Icon.Default.mergeOptions({
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
-function MapUpdater({ onMove }: { onMove: (centerLat: number, centerLng: number, bounds: L.LatLngBounds, zoom: number) => void }) {
-  useMapEvents({ moveend(e) { const map = e.target; const c = map.getCenter(); onMove(c.lat, c.lng, map.getBounds(), map.getZoom()); } });
+function MapUpdater({ onMove, mapRef }: { onMove: (centerLat: number, centerLng: number, bounds: L.LatLngBounds, zoom: number) => void, mapRef: React.MutableRefObject<any> }) {
+  const map = useMapEvents({
+    moveend(e) {
+      const map = e.target;
+      const c = map.getCenter();
+      onMove(c.lat, c.lng, map.getBounds(), map.getZoom());
+    }
+  });
+  
+  // Set the map ref when the component mounts
+  React.useEffect(() => {
+    if (map && !mapRef.current) {
+      mapRef.current = map;
+    }
+  }, [map, mapRef]);
+  
   return null;
 }
 
@@ -128,21 +142,40 @@ export const InteractiveHelpMap = () => {
 
   useEffect(() => {
     // Try to get user location on mount; fall back to default center
-    if (navigator.geolocation) {
+    const initializeMap = () => {
+      if (navigator.geolocation) {
         const got = (pos: GeolocationPosition) => {
           const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           setUserLocation(loc);
-          try { mapRef.current?.setView([loc.lat, loc.lng], 13); } catch (_) {}
-          const map = mapRef.current;
-          if (map) {
-            fetchNearbyByBBox(map.getBounds(), loc.lat, loc.lng, map.getZoom());
-          } else {
-            const fakeBounds = L.latLngBounds([loc.lat - 0.05, loc.lng - 0.05], [loc.lat + 0.05, loc.lng + 0.05]);
-            fetchNearbyByBBox(fakeBounds, loc.lat, loc.lng, 13);
-          }
+          // Use setTimeout to ensure map is ready
+          setTimeout(() => {
+            try { 
+              mapRef.current?.setView([loc.lat, loc.lng], 13); 
+              const map = mapRef.current;
+              if (map) {
+                fetchNearbyByBBox(map.getBounds(), loc.lat, loc.lng, map.getZoom());
+              } else {
+                const fakeBounds = L.latLngBounds([loc.lat - 0.05, loc.lng - 0.05], [loc.lat + 0.05, loc.lng + 0.05]);
+                fetchNearbyByBBox(fakeBounds, loc.lat, loc.lng, 13);
+              }
+            } catch (_) {}
+          }, 100);
         };
         const onerr = () => {
           // fallback
+          setTimeout(() => {
+            const map = mapRef.current;
+            if (map) {
+              fetchNearbyByBBox(map.getBounds(), defaultCenter.lat, defaultCenter.lng, map.getZoom());
+            } else {
+              const fakeBounds = L.latLngBounds([defaultCenter.lat - 0.5, defaultCenter.lng - 0.5], [defaultCenter.lat + 0.5, defaultCenter.lng + 0.5]);
+              fetchNearbyByBBox(fakeBounds, defaultCenter.lat, defaultCenter.lng, 6);
+            }
+          }, 100);
+        };
+        navigator.geolocation.getCurrentPosition(got, onerr, { timeout: 5000 });
+      } else {
+        setTimeout(() => {
           const map = mapRef.current;
           if (map) {
             fetchNearbyByBBox(map.getBounds(), defaultCenter.lat, defaultCenter.lng, map.getZoom());
@@ -150,17 +183,13 @@ export const InteractiveHelpMap = () => {
             const fakeBounds = L.latLngBounds([defaultCenter.lat - 0.5, defaultCenter.lng - 0.5], [defaultCenter.lat + 0.5, defaultCenter.lng + 0.5]);
             fetchNearbyByBBox(fakeBounds, defaultCenter.lat, defaultCenter.lng, 6);
           }
-        };
-      navigator.geolocation.getCurrentPosition(got, onerr, { timeout: 5000 });
-    } else {
-      const map = mapRef.current;
-      if (map) {
-        fetchNearbyByBBox(map.getBounds(), defaultCenter.lat, defaultCenter.lng, map.getZoom());
-      } else {
-        const fakeBounds = L.latLngBounds([defaultCenter.lat - 0.5, defaultCenter.lng - 0.5], [defaultCenter.lat + 0.5, defaultCenter.lng + 0.5]);
-        fetchNearbyByBBox(fakeBounds, defaultCenter.lat, defaultCenter.lng, 6);
+        }, 100);
       }
-    }
+    };
+
+    // Delay initialization to ensure map is mounted
+    const timer = setTimeout(initializeMap, 200);
+    return () => clearTimeout(timer);
   }, [defaultCenter.lat, defaultCenter.lng]);
 
   const requestLocation = () => {
@@ -224,11 +253,59 @@ export const InteractiveHelpMap = () => {
         </div>
 
         <div className="lg:col-span-2 h-full rounded-lg overflow-hidden shadow-md bg-slate-900">
-          <MapContainer center={[defaultCenter.lat, defaultCenter.lng]} zoom={6} style={{height:'100%', width:'100%'}} whenCreated={(m)=>mapRef.current=m}>
+          <MapContainer 
+            center={[defaultCenter.lat, defaultCenter.lng]} 
+            zoom={6} 
+            style={{height:'100%', width:'100%'}}
+          >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapUpdater onMove={handleMapMove} />
-            {userLocation && <><Marker position={[userLocation.lat,userLocation.lng]}><Popup>You are here</Popup></Marker><Circle center={[userLocation.lat,userLocation.lng]} radius={1000} pathOptions={{color:'#60A5FA'}}/></>}
-            {helpCenters.map(c=> <Marker key={c.id} position={[c.lat,c.lng]} eventHandlers={{click:()=>setSelected(c.id)}}><Popup><div><strong>{c.name}</strong><div className="text-xs">{c.type}</div>{c.address && <div className="text-xs">{c.address}</div>}<div className="mt-2 flex gap-2">{c.phone && <Button size="sm" onClick={()=>window.location.href=`tel:${c.phone}`} className="bg-indigo-600 text-white px-3 py-1 text-sm rounded-md">Call</Button>}<Button size="sm" variant="outline" onClick={()=>openDirections(c)} className="border border-slate-600 text-white px-3 py-1 text-sm rounded-md bg-transparent">Directions</Button></div></div></Popup></Marker>)}
+            <MapUpdater onMove={handleMapMove} mapRef={mapRef} />
+            {userLocation && (
+              <>
+                <Marker position={[userLocation.lat, userLocation.lng]}>
+                  <Popup>You are here</Popup>
+                </Marker>
+                <Circle 
+                  center={[userLocation.lat, userLocation.lng]} 
+                  radius={1000} 
+                  pathOptions={{color:'#60A5FA'}}
+                />
+              </>
+            )}
+            {helpCenters.map(c => (
+              <Marker 
+                key={c.id} 
+                position={[c.lat, c.lng]} 
+                eventHandlers={{click: () => setSelected(c.id)}}
+              >
+                <Popup>
+                  <div>
+                    <strong>{c.name}</strong>
+                    <div className="text-xs">{c.type}</div>
+                    {c.address && <div className="text-xs">{c.address}</div>}
+                    <div className="mt-2 flex gap-2">
+                      {c.phone && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => window.location.href = `tel:${c.phone}`} 
+                          className="bg-indigo-600 text-white px-3 py-1 text-sm rounded-md"
+                        >
+                          Call
+                        </Button>
+                      )}
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => openDirections(c)} 
+                        className="border border-slate-600 text-white px-3 py-1 text-sm rounded-md bg-transparent"
+                      >
+                        Directions
+                      </Button>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         </div>
       </div>

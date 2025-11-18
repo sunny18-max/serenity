@@ -1,41 +1,14 @@
 import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react-swc";
+import react from "@vitejs/plugin-react-swc"; // Use SWC plugin
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => {
-  // Load env file from parent directory (root) and current directory
   const env = loadEnv(mode, path.resolve(__dirname, '..'), '');
   
   return {
     base: '/',
-    envDir: path.resolve(__dirname, '..'), // Look for .env in parent directory
-    server: {
-      host: true, // Allow all hosts in development
-      port: 8080,
-      // Configure proxy for development
-      proxy: {
-        '/api': {
-          target: process.env.VITE_BACKEND_API_URL || 'http://localhost:3001',
-          changeOrigin: true,
-          secure: process.env.NODE_ENV === 'production',
-          rewrite: (path) => path.replace(/^\/api/, ''),
-          // Add CORS headers
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.error('Proxy error:', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request to the Target:', {
-                method: req.method,
-                url: req.url,
-                headers: req.headers,
-              });
-            });
-          },
-        },
-      },
-    },
+    envDir: path.resolve(__dirname, '..'),
     plugins: [
       react(),
       mode === "development" && componentTagger(),
@@ -45,5 +18,23 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 1600,
+    },
+    // Remove server configuration for production
+    ...(mode === 'development' && {
+      server: {
+        host: true,
+        port: 8080,
+        proxy: {
+          '/api': {
+            target: process.env.VITE_BACKEND_API_URL || 'http://localhost:3001',
+            changeOrigin: true,
+            secure: false,
+            rewrite: (path) => path.replace(/^\/api/, ''),
+          },
+        },
+      },
+    }),
   };
 });
