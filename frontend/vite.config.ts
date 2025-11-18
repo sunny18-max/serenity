@@ -1,5 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react-swc"; // Use SWC plugin
+import react from "@vitejs/plugin-react"; // Use standard React plugin
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
