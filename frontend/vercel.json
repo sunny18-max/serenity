@@ -1,4 +1,7 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install --legacy-peer-deps && npm install @rollup/rollup-linux-x64-gnu --no-save",
   "rewrites": [
     {
       "source": "/(.*)",

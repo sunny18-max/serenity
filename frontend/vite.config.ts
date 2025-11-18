@@ -20,6 +20,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       chunkSizeWarningLimit: 1600,
+      rollupOptions: {
+        external: [],
+        output: {
+          manualChunks: undefined,
+        },
+      },
     },
     // Remove server configuration for production
     ...(mode === 'development' && {
