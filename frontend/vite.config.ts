@@ -21,9 +21,11 @@ export default defineConfig(({ mode }) => {
     build: {
       chunkSizeWarningLimit: 1600,
       rollupOptions: {
-        external: [],
         output: {
-          manualChunks: undefined,
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-toast'],
+          },
         },
       },
     },
